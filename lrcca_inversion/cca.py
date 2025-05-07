@@ -290,7 +290,7 @@ class CCA:
             Parameters to pass to the probabilistic prediction function (if any), for example, the output sample_size
             from the posterior distribution.
 
-        :return: the predictions, shaped (out_dim x number of examples).
+        :return: the predictions, shaped (number of examples, out_dim, sample_size).
         """
         in_samples = new_in_data.shape[0]
         r = len(canCorr)
@@ -298,6 +298,7 @@ class CCA:
         new_in_can_variates = CCA.reduce(new_in_data, T_matrix_in)
 
         if not probabilistic:
+            sample_size = 1
             # assess if T_matrix_in column numbers are equal to the number of canonical correlations
             if T_matrix_in.shape[1] != r:
                 raise ValueError(
@@ -310,7 +311,7 @@ class CCA:
 
             predictions = CCA.reconstruct(T_matrix_out_inv_T,new_out_can_variates, out_dim, out_mean, out_std)
 
-            return predictions
+            return predictions.T.reshape(in_samples, out_dim, sample_size)
         else:
             # read sample_size from kwargs if any, if not set to 100
             sample_size = kwargs.get("sample_size", 100)
@@ -323,11 +324,11 @@ class CCA:
 
                 return z_can
 
-            predictions = np.zeros((out_dim, sample_size, in_samples))
+            predictions = np.zeros((in_samples, out_dim, sample_size))
             for i in range(in_samples):
                 new_in_can_var_vec = new_in_can_variates[:, i]
                 z_can = sample_z_posterior(new_in_can_var_vec)
-                predictions[:, :, i] = CCA.reconstruct(T_matrix_out_inv_T, z_can, out_dim, out_mean, out_std)
+                predictions[i, :, :] = CCA.reconstruct(T_matrix_out_inv_T, z_can, out_dim, out_mean, out_std)
 
             return predictions
 

@@ -6,6 +6,32 @@
 import h5py
 import torch
 import numpy as np
+import pickle
+
+def save_to_disk(data, file_path):
+    """
+    Save data to disk using pickle.
+
+    data:
+        data to save
+    file_path:
+        path to save the data
+    """
+    with open(file_path, 'wb') as f:
+        pickle.dump(data, f)
+
+def load_from_disk(file_path):
+    """
+    Load data from disk using pickle.
+
+    file_path:
+        path to load the data from
+    :return: loaded data
+    """
+    with open(file_path, 'rb') as f:
+        data = pickle.load(f)
+    return data
+
 
 def import_dataset(datasets_list, config_obj, train_set_size, subset_train = None, mean_center = True):
     """
