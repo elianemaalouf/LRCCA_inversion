@@ -37,12 +37,12 @@ def save_config(config_dict, path):
         json.dump(config_dict, f, indent=4)
 
 # new experiment to add
-xp_name = "det_preds_reg_n7000"
+xp_name = "det_preds_reg_n500"
 xp_config = {
     "xp_name": xp_name,
     "xp_folder": f"{BASE_DIR}/Experiments/deterministic_preds/{xp_name}",
-    "train_subset": 7000,
-    "lambda_x_vec":[0, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10],
+    "train_subset": 500,
+    "lambda_x_vec":[1e-4, 1e-3, 1e-2, 1e-1, 1, 10],
     "lambda_y_vec":[0, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10],
     "run_validations": True,
     "validations":{'types':['rmse', 'es', 'vs'],
@@ -50,7 +50,10 @@ xp_config = {
     "probabilistic": False,
     "prob_sample_size": 1,
     "parameters_file": f"{BASE_DIR}/Data/parameters_matern32_Mu10_Var1p96_CorH30_CorV15_linear_81.txt",
-    "test_vecs_ids_to_invert": None
+    "test_vecs_ids_to_invert": None,
+    "det_pred_refs":{'rmse': {'lower': None, 'center': None, 'upper': None},
+                     'es': {'lower': None, 'center': None, 'upper': None},
+                     'vs':{'lower': None, 'center': None, 'upper': None}}
 }
 save_config(xp_config, xp_config["xp_folder"])
 
