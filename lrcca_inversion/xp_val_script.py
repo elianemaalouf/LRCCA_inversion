@@ -60,8 +60,10 @@ if xp_config['run_validations']:
 
     # Run the validation with the current combination of lambda_x and lambda_y
     validation_data = run_validation(lambda_combinations, xp_config['validations'], xp_config['probabilistic'],
-                                     xp_config['prob_sample_size'],xp_config['train_subset'],
-                                     train_x, train_y, val_x, val_y, x_mean, y_mean, noises_list, add_val_noise=True)
+                                     xp_config['prob_sample_size'],xp_config['train_subset'], xp_config['val_subset_size'],
+                                     train_x, train_y, val_x, val_y, x_mean, noises_list,
+                                     add_val_noise=True, assess_train_metrics = xp_config.get('assess_train_metrics', False),
+                                     validation_repeats=xp_config.get('validation_repeats', 1),)
     # Save the validation data to disk
     save_to_disk(validation_data, f"{xp_config['xp_folder']}/validation_data.pkl")
 
