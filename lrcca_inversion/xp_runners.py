@@ -157,10 +157,21 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
             # compute validation metrics
             for i, validation_type in enumerate(validation_types):
 
-                validation_param = validation_params[i]
-                print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
-                      f"Running validation: {validation_type} with (train) predictions {predicted_train_x.shape}")
-                train_metrics = run_metrics(predicted_train_x, train_val_x_d, validation_type, validation_param)
+                    validation_param = validation_params[i]
+
+                    if assess_train_metrics:
+                        train_val_x_d = train_val_x.copy() + x_mean
+                        print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
+                              f"Running validation: {validation_type} with (train) predictions {predicted_train_x.shape}")
+                        train_metrics = run_metrics(predicted_train_x, train_val_x_d, validation_type, validation_param,
+                                                    reduced_sample_size = 10 if probabilistic else None)
+
+                        # if results[noise_label]['train'][validation_type][comb] exists, extend it
+                        if comb in results[noise_label]['train'][validation_type]:
+                            results[noise_label]['train'][validation_type][comb].extend(train_metrics)
+                        else:
+                            # else create it
+                            results[noise_label]['train'][validation_type][comb] = train_metrics
 
                 print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
                       f"Running validation: {validation_type} with (val) predictions {predicted_val_x.shape}")
