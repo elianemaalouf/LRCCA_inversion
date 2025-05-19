@@ -62,7 +62,7 @@ def run_metrics(predicted, true, metric, metric_param):
         est_metric = []
         for i in range(n):
             observation = true[i, :].reshape(1, dim)
-            samples = predicted[i, :, :].reshape(m, dim)
+            samples = predicted[i, :, :].transpose()
 
             if metric == "rmse":
                 if reduced_sample_size is not None:
