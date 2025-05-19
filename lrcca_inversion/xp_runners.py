@@ -173,12 +173,16 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
                             # else create it
                             results[noise_label]['train'][validation_type][comb] = train_metrics
 
-                print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
-                      f"Running validation: {validation_type} with (val) predictions {predicted_val_x.shape}")
-                val_metrics = run_metrics(predicted_val_x, val_x_d, validation_type, validation_param)
-
-                results[noise_label]['train'][validation_type][comb] = train_metrics
-                results[noise_label]['val'][validation_type][comb] = val_metrics
+                    print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
+                          f"Running validation: {validation_type} with (val) predictions {predicted_val_x.shape}")
+                    val_metrics = run_metrics(predicted_val_x, val_x_d, validation_type, validation_param,
+                                              reduced_sample_size = 10 if probabilistic else None)
+                    # if results[noise_label]['val'][validation_type][comb] exists, extend it
+                    if comb in results[noise_label]['val'][validation_type]:
+                        results[noise_label]['val'][validation_type][comb].extend(val_metrics)
+                    else:
+                        # else create it
+                        results[noise_label]['val'][validation_type][comb] = val_metrics
 
     return results
 
