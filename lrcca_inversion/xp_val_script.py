@@ -70,6 +70,39 @@ if xp_config['run_validations']:
 
 
 else:
+    print("Running the inversion...")
+    # prepare test data for inversion
+    test_y_loaded_from_disk = False
+    test_vecs_ids_to_invert = xp_config["test_vecs_ids_to_invert"]
+
+    if test_vecs_ids_to_invert is not None:
+        test_y_loaded_from_disk = True
+        test_x = test_x[test_vecs_ids_to_invert, :]
+
+        test_y = {}
+        for noise_i in noises_list:
+            noise_distribution = noise_i["distribution"]
+            noise_loc = noise_i["location"]
+            noise_scale = noise_i["scale"]
+
+            if noise_scale < 2:
+                noise_label = "small_noise"
+            else:
+                noise_label = "large_noise"
+
+            test_y[noise_label] = np.zeros((len(test_vecs_ids_to_invert), config.rays))
+
+            noise_test_y_folder = f"{data_folder_location}/noisy_ttvec_{noise_distribution}_loc{noise_loc}_scale{str(noise_scale).replace('.','p')}"
+
+            for i, vec_id in enumerate(test_vecs_ids_to_invert):
+                # read y_obs
+                with open(f"{noise_test_y_folder}/noisy_tt_vec{vec_id}", "rb") as f:
+                    y_obs = pickle.load(f)
+
+                y_obs = y_obs.numpy().reshape(-1, config.rays)
+                y_obs = y_obs-y_mean
+                test_y[noise_label][i, :] = y_obs
+
     # Run the inversion
     inversion_data = run_inversion(xp_config['lambda_x_vec'], xp_config['lambda_y_vec'], xp_config['probabilistic'],
                                    xp_config['prob_sample_size'], xp_config['train_subset'],
