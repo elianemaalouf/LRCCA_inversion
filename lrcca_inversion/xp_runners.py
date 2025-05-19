@@ -126,10 +126,11 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
                     results[noise_label]['train'] = {}
                 results[noise_label]['val'] = {}
 
-        # make structure for all validation types
-        for validation_type in validation_types:
-            results[noise_label]['train'][validation_type] = {}
-            results[noise_label]['val'][validation_type] = {}
+            # make structure for all validation types
+            for validation_type in validation_types:
+                if assess_train_metrics:
+                    results[noise_label]['train'][validation_type] = {} if validation_type not in results[noise_label]['train'] else results[noise_label]['train'][validation_type]
+                results[noise_label]['val'][validation_type] = {} if validation_type not in results[noise_label]['val'] else results[noise_label]['val'][validation_type]
 
         # loop over combinations of lambda_x and lambda_y
         for comb in lambda_combinations:
