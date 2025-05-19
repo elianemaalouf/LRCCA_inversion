@@ -186,8 +186,61 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
 
     return results
 
-def run_inversion():
-    pass
+def run_inversion(lambda_x, lambda_y, probabilistic, prob_sample_size, train_subset_size, train_x, train_y,
+                  test_x, test_y, x_mean, noises_list, test_y_loaded_from_disk=False):
+    """
+    Run the inversion with the given parameters.
+    """
+
+    # test whether lambda_x or lambda_y are vectors of size larger than 1 and assess if it is the same size as noises_list
+    if isinstance(lambda_x, (list, np.ndarray)) and len(lambda_x) > 1:
+        if len(lambda_x) != len(noises_list):
+            raise ValueError("lambda_x should be a vector of size equal to the number of noise types.")
+    if isinstance(lambda_y, (list, np.ndarray)) and len(lambda_y) > 1:
+        if len(lambda_y) != len(noises_list):
+            raise ValueError("lambda_y should be a vector of size equal to the number of noise types.")
+
+    # if len(lambda_x) == 1 repeat it for all noise types
+    if len(lambda_x) == 1:
+        lambda_x = np.repeat(lambda_x, len(noises_list))
+    if len(lambda_y) == 1:
+        lambda_y = np.repeat(lambda_y, len(noises_list))
+
+    out_dim = train_x.shape[1]
+    full_train_size = train_x.shape[0]
+
+    train_subset_indices = select_random_indices(full_train_size, train_subset_size, with_replacement=False)
+    train_x = train_x[train_subset_indices, :]
+    train_y = train_y[train_subset_indices, :]
+
+    cca_objects = {}
+    predictions = {}
+
+    for i, noise_i in enumerate(noises_list):
+        noise_test, noise_label = sample_noise(noise_i, test_x.shape[0], train_y.shape[1])
+
+        # train RCCA with the training data and the given lambda_x and lambda_y
+        cca = CCA()
+        cca.fit_cca_svd(train_x, train_y, lambda_x=lambda_x[i], lambda_y=lambda_y[i])
+
+        cca_objects[noise_label] = cca
+        predictions[noise_label] = {}
+
+        if test_y_loaded_from_disk:
+            test_y_n = test_y[noise_label]
+        else:
+            test_y_n = test_y.copy() + noise_test
+
+        predicted_test_x = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, test_y_n, cca.CanCorr, out_dim,
+                                        out_mean=x_mean, probabilistic=probabilistic, sample_size=prob_sample_size)
+
+        test_x_d = test_x.copy() + x_mean
+
+        # combine the predictions and the ground truth test_x_d and add them to predictions dictionnary
+        predictions[noise_label]['predicted'] = predicted_test_x
+        predictions[noise_label]['ground_truth'] = test_x_d
+
+    return predictions, cca_objects
 
 def run_validation_eval(validation_data, xp_config_folder, reference_metrics_list=None, **kwargs):
     """
