@@ -90,7 +90,7 @@ def get_best_param_comb(data_dict, metric, ref_stat = 'median'):
 
     return best_comb
 
-def make_ref_dict(ref_data_dict_list, metric):
+def make_ref_dict(ref_data_dict_list, metric, noise_label=None):
     """
     Prepares a dictionary of reference values for the given metric to be used in the boxplots.
 
@@ -111,6 +111,9 @@ def make_ref_dict(ref_data_dict_list, metric):
     """
     ref_dict = {}
     for i, ref_data_dict in enumerate(ref_data_dict_list):
+        if noise_label is not None and noise_label in ref_data_dict.keys():
+            ref_data_dict = ref_data_dict[noise_label]
+
         if metric not in ref_data_dict.keys():
             raise ValueError(f"Metric {metric} not found in reference data dictionary. Available metrics: {list(ref_data_dict.keys())}")
 
