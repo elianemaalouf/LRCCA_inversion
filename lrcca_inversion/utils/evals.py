@@ -314,6 +314,189 @@ def make_val_boxplots(data_dict, metric, references_dict= None, labels_dict = No
 
     plt.close()
 
+def plot_transformations(
+        T_matrix, dims, groups=3, number_of_comp=3, save_location=None, dpi=600
+    ):
+        """
+        Function to plot the first "number_of_comp" canonical transformations
+        T_matrix
+            the matrix of canonical transformations.
+        dims
+            provides the shape of the components to plot.
+            Should be either (1, dim) for a 1D vector or (height, width) for a 2D matrix
+        groups
+            number of grouped components to plot
+        number_of_comp
+            the number of components to plot per group. Total number of components is groups*number_of_comp
+        save_location
+            folder location where to save the resulting plot
+        dpi
+            the image resolution in dots per inch. Default: 600
+        """
+
+        mpl, plt, make_axes_locatable, tick = plots_imports()
+        base_config(mpl)
+
+        T_matrix = T_matrix.T
+        height, width = dims
+
+        for g in range(groups):
+            fig, axes = plt.subplots(nrows=1, ncols=number_of_comp)
+
+            if hasattr(axes, "__len__"):
+                axes = axes
+            else:
+                axes = [axes]
+
+            for i in range(number_of_comp):
+                if height == 1:
+                    im = axes[i].plot(
+                        T_matrix[g * number_of_comp + i, :].reshape(width)
+                    )
+                    axes[i].spines["right"].set_visible(False)
+                    axes[i].spines["top"].set_visible(False)
+                    axes[i].set_xlim([0, width - 1])
+                    axes[i].set_xticks(list(range(0, width, 20)))
+                    axes[i].set_xticklabels([str(x) for x in range(0, width, 20)])
+
+                else:
+                    im = axes[i].imshow(
+                        T_matrix[g * number_of_comp + i, :].reshape(height, width)
+                    )
+                    axes[i].set_xticks([])
+                    axes[i].set_yticks([])
+                    ax_divider = make_axes_locatable(axes[i])
+                    cax = ax_divider.append_axes(
+                        "right", size="5%", pad="2%", frameon=False
+                    )
+                    cax.set_xticks([])
+                    cax.set_yticks([])
+
+                    fig.colorbar(
+                        im, cax=cax, format=tick.FormatStrFormatter("%.2f")
+                    )  # , extend = 'both')
+
+                axes[i].title.set_text(
+                    "Transform. #{}".format(g * number_of_comp + i + 1)
+                )
+            plt.tight_layout()
+            plt.savefig(save_location.format(g), dpi=dpi, bbox_inches="tight")
+
+            plt.close()
+
+def plot_samples(
+    examples,
+    width,
+    height,
+    rmse_labels=None,
+    ssim_labels = None,
+    grd_truth=True,
+    save_location=None,
+    dpi=600,
+    show = False,
+):
+    """
+    Function to plot given set of examples
+    examples:
+        a set of examples to plot. Expects format as (number of examples, samples per example, height*width)
+    width:
+        the width of the image in pixels
+    height:
+        the height of the image in pixels
+    rmse_labels:
+        a list of RMSE values to add on top of the sample
+    ssim_labels:
+        a list of SSIM values to add on top of the sample
+    grd_truth:
+        if True, the first example provided is the ground truth
+    save_location:
+        location where to save the generated plot
+    dpi:
+        resolution of the image in dots per inch (dpi)
+    """
+
+    import matplotlib.gridspec as gridspec
+
+    mpl, plt, make_axes_locatable, tick = plots_imports()
+    base_config(mpl)
+
+    fig = plt.figure()
+
+    rows = examples.shape[0]
+    cols = examples.shape[1]
+
+    gspec = gridspec.GridSpec(ncols=cols, nrows=rows, figure=fig)
+
+    vmin = np.min(examples)
+    vmax = np.max(examples)
+
+    for i in range(rows):
+
+        for j in range(cols):
+            ax = fig.add_subplot(gspec[i, j])
+
+            im = ax.imshow(examples[i, j, :].reshape(height, width))
+            ax.set_xticks([])
+            ax.set_yticks([])
+            im.set_clim(vmin, vmax)
+            ax_divider = make_axes_locatable(ax)
+            cax = ax_divider.append_axes("right", size="5%", pad="2%", frameon=False)
+            cax.set_xticks([])
+            cax.set_yticks([])
+
+            if j == cols - 1:
+                fig.colorbar(im, cax=cax, format=tick.FormatStrFormatter("%.2f"))
+
+            if grd_truth:
+                if j == 0:
+                    ax.title.set_text(r"Ground truth")
+                else:
+                    label = f"RMSE = {rmse_labels[i][j-1]:.2f} ns/m" if rmse_labels is not None else f"Example #{j}"
+                    label = f"{label}; SSIM = {ssim_labels[i][j-1]:.2f}" if ssim_labels is not None else label
+                    ax.title.set_text(label)
+            else:
+                label = f"RMSE = {rmse_labels[i][j]:.2f} ns/m" if rmse_labels is not None else f"Example #{j}"
+                label = f"{label}; SSIM = {ssim_labels[i][j]:.2f}" if ssim_labels is not None else label
+                ax.title.set_text(label)
+
+    plt.tight_layout()
+
+    if show:
+        plt.show()
+    else:
+        plt.savefig(save_location, dpi=dpi, bbox_inches="tight")
+
+    plt.close()
+
+def plot_boxplots(
+    values_all,
+    labels,
+    axes_plot_titles=None,
+    lower_lim=0.2,
+    upper_lim=None,
+    whis_low=2.5,
+    whis_high=97.5,
+    y_scale = 'linear',
+    save_location=None,
+    dpi=600,
+    show=False,
+):
+    """
+    Function to plot boxplots of given values. It detects if one or more boxplots need to be drawn and assigns given labels
+    to them.
+
+    values_all:
+        array containing the values to boxplot. Format as [number of subplots, number of boxplots, values per boxplot]
+    to have multiple sublopts in the same figure and multiple boxplots in each subplot.
+
+    labels :
+        labels to give to each boxplot, should be a list with size "number of plots"
+
+    axes_plot_titles :
+        provide title to use for axes and plot. Format as [list of subplot_titles, horizontal_axis_title, vertical_axis_title]
+
+    lower_lim:
+        lower limit of the y axis
 
 # test make_val_boxplots
 if __name__ == "__main__":
