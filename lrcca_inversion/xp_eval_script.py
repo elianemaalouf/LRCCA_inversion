@@ -10,7 +10,7 @@ import json
 from lrcca_inversion.utils.config import Config
 from xp_config import load_config
 from lrcca_inversion.utils.generic_fn import import_dataset, save_to_disk, load_from_disk
-from lrcca_inversion.xp_runners import run_validation_eval, run_inversion_eval, run_reference_metrics
+from lrcca_inversion.xp_runners import run_validation_eval, run_inversion_eval, run_val_reference_metrics, run_inv_reference_metrics
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,7 +22,7 @@ if Path(all_xp_configs_path).exists():
 else:
     raise ValueError("No experiments found. Please create an experiment configuration file first via xp_config.py")
 
-xp_name = "det_preds_reg_n7000"
+xp_name = "prob_preds_reg_n500_cv5"
 xp_config = load_config(f"{all_xp_configs[xp_name]}/config.json")
 
 # load data configuration and files
@@ -54,14 +54,12 @@ test_y = datasets["test"][1] # noiseless at import time
 
 del datasets # free up memory
 
-if xp_config['run_validations']:
-    # import validation_data from disk
-    validation_data = load_from_disk(f"{xp_config['xp_folder']}/validation_data.pkl")
-
-    # compute or read references statistics or load from disk
-    if not Path(f"{BASE_DIR}/Experiments/reference_val_metrics.pkl").exists():
-        # Run the reference statistics
-        reference_metrics = run_reference_metrics(n=100, m=500, train_x=train_x, val_x=val_x, x_mean=x_mean,
+# get vs training references
+if not Path(f"{BASE_DIR}/Experiments/{xp_config['vs_train_refs_filename']}").exists():
+    print("Running the reference statistics...")
+    # Run the reference statistics
+    if xp_config['run_validations']:
+        reference_metrics = run_val_reference_metrics(n=100, m=500, train_x=train_x, val_x=val_x, x_mean=x_mean,
                                                   metric_dict=xp_config['validations'])
     else:
         print("for test...")
@@ -85,25 +83,16 @@ if xp_config['run_validations']:
     reference_metrics_list = [reference_metrics]
 
     if xp_config['probabilistic']:
-        reference_metrics_list.extend(xp_config["det_pred_refs"])
+        reference_metrics_list.append(xp_config["det_pred_refs"])
 
     run_validation_eval(validation_data, xp_config['xp_folder'], reference_metrics_list = reference_metrics_list,
-                        ref_stat= 'median', reduce_lambda_y_vec=True, lambda_y_subset=4)
+                        ref_stat= 'median', reduce_lambda_y_vec=True, lambda_y_subset=7)
 
 else:
-    # import inversion_data from disk
+    print("Running the inversion evaluation...")
+    # import inversion_data and pretrained cca object from disk
     inversion_data = load_from_disk(f"{xp_config['xp_folder']}/inversion_data.pkl")
-
-    # compute or read references statistics or load from disk
-    if not Path(f"{xp_config['xp_folder']}/reference_test_metrics.pkl").exists():
-        # Run the reference statistics
-        reference_metrics = run_reference_metrics(n=100, m=500, train_x=train_x, val_x=test_x, x_mean=x_mean,
-                                                  metric_dict=xp_config['validations'])
-        # Save the reference metrics to disk
-        save_to_disk(reference_metrics, f"{BASE_DIR}/Experiments/reference_test_metrics.pkl")
-    else:
-        # Load the reference metrics from disk
-        reference_metrics = load_from_disk(f"{BASE_DIR}/Experiments/reference_test_metrics.pkl")
+    cca_objects = load_from_disk(f"{xp_config['xp_folder']}/cca_objects.pkl")
 
     # Run the inversion evaluation and plots
-    run_inversion_eval(inversion_data, xp_config['xp_folder'])
+    run_inversion_eval(inversion_data, cca_objects, xp_config["validations"],xp_config['xp_folder'], config, reference_metrics)
