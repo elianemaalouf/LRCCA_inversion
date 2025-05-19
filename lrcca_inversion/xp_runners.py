@@ -65,7 +65,11 @@ def run_metrics(predicted, true, metric, metric_param):
             samples = predicted[i, :, :].reshape(m, dim)
 
             if metric == "rmse":
-                est_metric.extend(rmse(observation, samples))
+                if reduced_sample_size is not None:
+                    reduced_sample_ids = select_random_indices(m, reduced_sample_size, with_replacement=False)
+                    est_metric.extend(rmse(observation, samples[reduced_sample_ids, :]))
+                else:
+                    est_metric.extend(rmse(observation, samples))
 
             elif metric == "es":
                 est_metric.append(es(observation, samples, metric_param))
