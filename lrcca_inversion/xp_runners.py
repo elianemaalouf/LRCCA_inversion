@@ -432,3 +432,55 @@ def run_reference_metrics(n, m, train_x, val_x, x_mean, metric_dict):
         metrics[metric] = run_metrics(train_x_d, val_x_d, metric, metric_params[i])
 
     return metrics
+
+def run_inv_reference_metrics(n, m, train_x, test_x, test_ids, x_mean, metric_dict):
+    """
+    Compute reference statistics against training data.
+    n:
+        number of samples from test_x (considered as observations/ground truths here). Will be used only if test_ids is None
+    m:
+        number of samples from train_x (considered as predictions here)
+    train_x:
+        training data (reference data)
+    test_x:
+        test data (observations)
+    test_ids:
+        indices of the test data to use
+    x_mean:
+        mean to add to the predictions
+    metric_dict:
+        dictionary of metrics to compute
+    :return:
+    """
+    total_train = train_x.shape[0]
+
+    n = 50 if n is None else n
+
+    if test_ids is not None:
+        if len(test_ids) > 49: # 50 or more
+            n = max(len(test_ids), n)
+
+    dim = train_x.shape[1]
+
+    metric_types = metric_dict['types']
+    metric_params = metric_dict['params']
+
+    if n > len(test_ids):
+        # select the observations/ground truths. shape (n, dim)
+        sample_test_indices = select_random_indices(test_x.shape[0], n, with_replacement=False)
+        test_ids = sample_test_indices
+
+    test_x = test_x[test_ids, :]
+    test_x_d = test_x.copy() + x_mean
+
+    # select the predictions and repeat them for each observation. shape (n, dim, m)
+    sample_train_indices = select_random_indices(total_train, m, with_replacement=False)
+    train_x_d = train_x[sample_train_indices, :].copy() + x_mean
+    train_x_d = np.repeat(train_x_d.reshape(1, dim, m), n, axis=0)
+
+    # compute metrics
+    metrics = {}
+    for i, metric in enumerate(metric_types):
+        metrics[metric] = run_metrics(train_x_d, test_x_d, metric, metric_params[i], reduced_sample_size = None)
+
+    return metrics
