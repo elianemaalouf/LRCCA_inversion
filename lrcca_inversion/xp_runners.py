@@ -312,7 +312,86 @@ def run_validation_eval(validation_data, xp_config_folder, reference_metrics_lis
 
 
 
-def run_inversion_eval(inversion_data, xp_config_folder):
+    results = {}
+    for noise_label in noise_labels:
+
+        n = inversion_data[noise_label]['predicted'].shape[0]
+        m = inversion_data[noise_label]['predicted'].shape[2]
+        dim = inversion_data[noise_label]['predicted'].shape[1]
+
+        # compute metrics
+        results[noise_label] = {}
+        for i, metric in enumerate(metrics_types):
+            results[noise_label][metric] = run_metrics(
+                inversion_data[noise_label]['predicted'],
+                inversion_data[noise_label]['ground_truth'],
+                metric,
+                metrics_params[i],
+                reduced_sample_size=int(m // 2) if m > 1 else None
+            )
+
+        # plot predictions examples
+        # select random indices
+        examples_to_plot = 1 if n==1 else 4
+        ids_examples_to_plot = select_random_indices(n, examples_to_plot, with_replacement=False)
+        samples_per_example = min(m, 3)
+        ids_samples_to_plot = np.array([select_random_indices(m, samples_per_example, with_replacement=False)
+                               for _ in range(examples_to_plot)])
+
+        #ids_samples_to_plot = select_random_indices(m, samples_per_example, with_replacement=False) if m > 1 else 0
+
+        # get ground truth
+        ground_truth = inversion_data[noise_label]['ground_truth'][ids_examples_to_plot, :].reshape(examples_to_plot, dim)
+        ground_truth = np.expand_dims(ground_truth, axis=1)
+
+        # get predictions and keep dims
+
+        samples = np.array([inversion_data[noise_label]['predicted'][ex_id, :, sample_ids]
+                  for ex_id, sample_ids in zip(ids_examples_to_plot, ids_samples_to_plot)])
+
+        # tranpose dim with samples_per_example
+        #samples = samples.transpose(0, 2, 1)  # shape (examples_to_plot, samples_per_example, dim)
+
+        # concatenate the predictions and ground truth to form shape (examples_to_plot, samples_per_example + 1, dim)
+        examples = np.concatenate((ground_truth, samples), axis=1)
+
+        if 'rmse' in metrics_types:
+            # get rmse for each example
+            # deaggregate the rmse values
+            rmse_ids_to_read = ((ids_examples_to_plot[:, np.newaxis] * m) + ids_samples_to_plot).flatten().astype(int)
+            rmse_values_flat = np.array(results[noise_label]['rmse'])[rmse_ids_to_read]
+            rmse_values = [rmse_values_flat[i:i+samples_per_example]
+                           for i in range(0, len(rmse_values_flat), samples_per_example)]
+
+        evals.plot_samples(examples, width, height, rmse_labels=rmse_values,
+                           grd_truth=True, save_location=f"{xp_config_folder}/{noise_label}_predictions.pdf",)
+
+        # plot transformation matrices
+        # X
+        evals.plot_transformations(cca_obj[noise_label].T_x_can,
+            [config.ny, config.nx],
+            groups=3,
+            number_of_comp=3,
+            save_location=xp_config_folder +"/X_CanComp_{}"+f"_{noise_label}.pdf")
+        # Y
+        evals.plot_transformations(cca_obj[noise_label].T_y_can,
+            [1, config.rays],
+            groups=3,
+            number_of_comp=3,
+            save_location=xp_config_folder + "/Y_CanComp_{}"+f"_{noise_label}.pdf")
+
+
+
+
+
+    # plot metrics boxplots
+
+
+
+    # get vs training reference
+
+    # make y_obs vs D_{y_resim} metrics
+
     pass
 
 def run_reference_metrics(n, m, train_x, val_x, x_mean, metric_dict):
