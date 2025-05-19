@@ -48,7 +48,7 @@ def sample_noise(noise_dict, sample_size, dim):
 
     return noise_sample, noise_label
 
-def run_metrics(predicted, true, metric, metric_param):
+def run_metrics(predicted, true, metric, metric_param, reduced_sample_size = None):
     """
     Run the validation metrics for the given predicted and true values.
     """
@@ -60,6 +60,7 @@ def run_metrics(predicted, true, metric, metric_param):
         raise ValueError(f"Validation type {metric} not supported. Available types: {list(AVAILABLE_METRICS.keys())}")
     else:
         est_metric = []
+
         for i in range(n):
             observation = true[i, :].reshape(1, dim)
             samples = predicted[i, :, :].transpose()
@@ -80,19 +81,21 @@ def run_metrics(predicted, true, metric, metric_param):
     return est_metric
 
 def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sample_size, train_subset_size,
-                   train_x, train_y, val_x, val_y, x_mean, y_mean, noises_list, add_val_noise=True):
+                   val_subset_size, train_x_orig, train_y_orig, val_x_orig, val_y_orig, x_mean, noises_list, add_val_noise=True, assess_train_metrics = False,
+                   validation_repeats=1):
     """
-    Run the validation with the current combination of lambda_x and lambda_y.
+    Run the validation with the combinations of lambda_x and lambda_y.
     """
-    if val_x is None:
+    if val_x_orig is None:
         raise ValueError("Validation data is None. Please provide valid validation data.")
 
     validation_types = validations_dict['types']
     validation_params = validations_dict['params']
-    out_dim = train_x.shape[1]
-    full_train_size = train_x.shape[0]
-    val_sample_size = val_x.shape[0] # the maximum we will use during the validation, also from the training set.
-                                    # the training of CCA will be done with subset of size train_subset_size
+    out_dim = train_x_orig.shape[1]
+    full_train_size = train_x_orig.shape[0]
+    val_subset_size = val_subset_size if val_subset_size is not None else val_x_orig.shape[0]
+    # val_subset_size: the maximum we will use during the validation, also from the training set (to limit execution time).
+    # the training of CCA will be done with subset of size train_subset_size
     results = {}
 
     for _ in range(validation_repeats):
@@ -104,20 +107,26 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
             train_val_x = train_x_orig[train_val_subset_indices, :]
             train_val_y = train_y_orig[train_val_subset_indices, :]
 
-    # Select a random subset of the training data (for training)
-    train_subset_indices = select_random_indices(full_train_size, train_subset_size, with_replacement=False)
-    train_x = train_x[train_subset_indices, :]
-    train_y = train_y[train_subset_indices, :]
+        # Select a random subset of the training data (for training)
+        train_subset_indices = select_random_indices(full_train_size, train_subset_size, with_replacement=False)
+        train_x = train_x_orig[train_subset_indices, :]
+        train_y = train_y_orig[train_subset_indices, :]
 
-    # Loop over noise types
-    for noise_i in noises_list:
-        noise_val, noise_label = sample_noise(noise_i, val_y.shape[0], val_y.shape[1]) if add_val_noise else None
+        if val_subset_size < val_x_orig.shape[0]:
+            # select random indices for the validation data
+            val_subset_indices = select_random_indices(val_x_orig.shape[0], val_subset_size, with_replacement=False)
+            val_x = val_x_orig[val_subset_indices, :]
+            val_y = val_y_orig[val_subset_indices, :]
 
-        # add noise to val_y if any, else copy original val_y
-        val_y_n = val_y.copy() + noise_val if add_val_noise else val_y.copy()
+        # Loop over noise types
+        for noise_i in noises_list:
+            noise_val, noise_label = sample_noise(noise_i, val_y.shape[0], val_y.shape[1]) if add_val_noise else None
 
-        print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
-              f"Running validation for noise type:{noise_label}")
+            # add noise to val_y if any, else copy original val_y
+            val_y_n = val_y.copy() + noise_val if add_val_noise else val_y.copy()
+
+            print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
+                  f"Running validation for noise type:{noise_label}")
 
             # check if results is empty, if so, initialize it, else, leave it as is
             if noise_label not in results:
@@ -132,30 +141,29 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
                     results[noise_label]['train'][validation_type] = {} if validation_type not in results[noise_label]['train'] else results[noise_label]['train'][validation_type]
                 results[noise_label]['val'][validation_type] = {} if validation_type not in results[noise_label]['val'] else results[noise_label]['val'][validation_type]
 
-        # loop over combinations of lambda_x and lambda_y
-        for comb in lambda_combinations:
-            lambda_x, lambda_y = comb
-            print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
-                  f":Running validation for lambda_x: {lambda_x}, lambda_y: {lambda_y}")
+            # loop over combinations of lambda_x and lambda_y
+            for comb in lambda_combinations:
+                lambda_x, lambda_y = comb
+                print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
+                      f":Running validation for lambda_x: {lambda_x}, lambda_y: {lambda_y}")
 
-            cca = CCA()
-            cca.fit_cca_svd(train_x, train_y, lambda_x=lambda_x, lambda_y=lambda_y)
+                cca = CCA()
+                cca.fit_cca_svd(train_x, train_y, lambda_x=lambda_x, lambda_y=lambda_y)
 
                 # predict on training
                 if assess_train_metrics:
                     predicted_train_x = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, train_val_y, cca.CanCorr, out_dim,
                                                 out_mean = x_mean, probabilistic = probabilistic, sample_size = prob_sample_size)
 
-            # predict on validation
-            predicted_val_x = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, val_y_n, cca.CanCorr, out_dim,
-                                            out_mean = x_mean, probabilistic = probabilistic, sample_size = prob_sample_size)
+                # predict on validation
+                predicted_val_x = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, val_y_n, cca.CanCorr, out_dim,
+                                                out_mean = x_mean, probabilistic = probabilistic, sample_size = prob_sample_size)
 
-            # re-add mean
-            train_val_x_d = train_val_x.copy() + x_mean
-            val_x_d = val_x.copy() + x_mean
+                # re-add mean
+                val_x_d = val_x.copy() + x_mean
 
-            # compute validation metrics
-            for i, validation_type in enumerate(validation_types):
+                # compute validation metrics
+                for i, validation_type in enumerate(validation_types):
 
                     validation_param = validation_params[i]
 
@@ -303,14 +311,25 @@ def run_validation_eval(validation_data, xp_config_folder, reference_metrics_lis
     for noise_label in noise_labels:
         for train_val_key in train_val_keys:
             for metric in metrics:
-                references_dict = evals.make_ref_dict(reference_metrics_list, metric) if reference_metrics_list else None
+                references_dict = evals.make_ref_dict(reference_metrics_list, metric, noise_label) if reference_metrics_list else None
                 data = validation_data[noise_label][train_val_key][metric]
                 evals.make_val_boxplots(data, metric, references_dict=references_dict,
                                         save_path=f"{xp_config_folder}/{noise_label}_{train_val_key}_{metric}.pdf",
                                         reduce_lambda_y_vec=kwargs.get('reduce_lambda_y_vec', False),
                                         lambda_y_subset=kwargs.get('lambda_y_subset', 4))
 
+def run_inversion_eval(inversion_data, cca_obj, metrics, xp_config_folder, config, reference_metrics, **kwargs):
+    import lrcca_inversion.utils.evals as evals
 
+    width = config.nx
+    height = config.ny
+
+    #examples_to_plot = kwargs.get('s_examples_to_plot', 3)
+
+    noise_labels = list(inversion_data.keys())
+
+    metrics_types = metrics['types']
+    metrics_params = metrics['params']
 
     results = {}
     for noise_label in noise_labels:
@@ -394,7 +413,7 @@ def run_validation_eval(validation_data, xp_config_folder, reference_metrics_lis
 
     pass
 
-def run_reference_metrics(n, m, train_x, val_x, x_mean, metric_dict):
+def run_val_reference_metrics(n, m, train_x, val_x, x_mean, metric_dict):
     """
     Compute reference statistics against training data.
     n:
@@ -429,7 +448,7 @@ def run_reference_metrics(n, m, train_x, val_x, x_mean, metric_dict):
     # compute metrics
     metrics = {}
     for i, metric in enumerate(metric_types):
-        metrics[metric] = run_metrics(train_x_d, val_x_d, metric, metric_params[i])
+        metrics[metric] = run_metrics(train_x_d, val_x_d, metric, metric_params[i], reduced_sample_size = None)
 
     return metrics
 
