@@ -5,11 +5,14 @@ Script to run the LRCCA inversion validation experiments
 """
 from pathlib import Path
 import json
+import pickle
+
+import numpy as np
 
 from lrcca_inversion.utils.config import Config
 from xp_config import load_config
 from lrcca_inversion.utils.generic_fn import import_dataset, save_to_disk
-from lrcca_inversion.xp_runners import run_validation, run_inversion, run_validation_eval, run_inversion_eval, run_reference_metrics
+from lrcca_inversion.xp_runners import run_validation, run_inversion
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,7 +24,7 @@ if Path(all_xp_configs_path).exists():
 else:
     raise ValueError("No experiments found. Please create an experiment configuration file first via xp_config.py")
 
-xp_name = "det_preds_reg_n500"
+xp_name = "prob_preds_reg_n500_cv5_es1"
 xp_config = load_config(f"{all_xp_configs[xp_name]}/config.json")
 
 # load data configuration and files
@@ -54,6 +57,7 @@ test_y = datasets["test"][1] # noiseless at import time
 del datasets # free up memory
 
 if xp_config['run_validations']:
+    print("Running the validation...")
     # create a list of all combinations of lambda_x and lambda_y
     lambda_combinations = [(lambda_x, lambda_y) for lambda_x in xp_config['lambda_x_vec'] for lambda_y in xp_config['lambda_y_vec']]
 
@@ -104,12 +108,14 @@ else:
                 test_y[noise_label][i, :] = y_obs
 
     # Run the inversion
-    inversion_data = run_inversion(xp_config['lambda_x_vec'], xp_config['lambda_y_vec'], xp_config['probabilistic'],
-                                   xp_config['prob_sample_size'], xp_config['train_subset'],
-                                   train_x, train_y, test_x, test_y, xp_config["test_vecs_ids_to_invert"])
+    inversion_data, cca_objects = run_inversion(xp_config['lambda_x_vec'], xp_config['lambda_y_vec'], xp_config['probabilistic'],
+                                            xp_config['prob_sample_size'], xp_config['train_subset'],
+                                            train_x, train_y, test_x, test_y, x_mean, noises_list, test_y_loaded_from_disk)
 
-    # Save the inversion data to disk
+    # Save the inversion data and CCA object to disk
     save_to_disk(inversion_data, f"{xp_config['xp_folder']}/inversion_data.pkl")
+    save_to_disk(cca_objects, f"{xp_config['xp_folder']}/cca_objects.pkl")
+
 
 
 
