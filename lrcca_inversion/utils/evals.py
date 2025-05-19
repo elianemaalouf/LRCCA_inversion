@@ -498,21 +498,82 @@ def plot_boxplots(
     lower_lim:
         lower limit of the y axis
 
-# test make_val_boxplots
-if __name__ == "__main__":
-    data_dict = {
-        'rmse': {
-            (0, 0): np.random.rand(100),
-            (1, 0): np.random.rand(100),
-            (0, 1): np.random.rand(100),
-            (1, 1): np.random.rand(100)
-        }
-    }
-    references_dict = {
-        'ref1': {'lower': 0.2, 'center': 0.5, 'upper': 0.8},
-        'ref2': {'lower': 0.3, 'center': 0.6, 'upper': 0.9}
-    }
-    make_val_boxplots(data_dict, 'rmse', references_dict=references_dict, show = True)
+    upper_lim:
+        upper limit of the y axis
+
+    whis_low:
+        lower limit of the whiskers
+
+    whis_high:
+        upper limit of the whiskers
+
+    y_scale:
+        scale of the y axis. Default: 'linear'
+
+    save_location:
+        location where to save the generated plot
+
+    dpi:
+        resolution of the image in dots per inch (dpi)
+
+    show:
+        if True, the plot is shown but not saved. if False, it is only saved
+    """
+    import pandas as pd
+    import seaborn as sns
+
+    mpl, plt, make_axes_locatable, tick = plots_imports()
+    base_config(mpl)
+
+    number_of_subplots = values_all.shape[0]
+    number_of_box = values_all.shape[1]
+
+    fig, ax = plt.subplots(nrows=1, ncols=number_of_subplots, sharey=True)
+    ax.set_yscale(y_scale)
+    if hasattr(ax, "__len__"):
+        axes = ax
+    else:
+        axes = [ax]
+
+    whis_low = whis_low
+    whis_high = whis_high
+
+    upper_lim = upper_lim
+    lower_lim = lower_lim
+
+    if len(labels) != values_all.shape[1]:
+        print("Number of labels does not match number of boxplots to produce!")
+        return None
+    else:
+        for i in range(number_of_subplots):
+            values = pd.DataFrame(values_all[i, :, :].reshape(number_of_box, -1)).T
+            values.columns = labels
+
+            sns.boxplot(
+                data=values,
+                whis=[whis_low, whis_high],
+                fliersize=2,
+                palette="vlag",
+                ax=axes[i],
+            )
+            axes[i].spines["top"].set_visible(False)
+            axes[i].spines["right"].set_visible(False)
+            axes[i].set_ylim(top=upper_lim, bottom=lower_lim)
+            axes[i].yaxis.set_major_formatter(tick.FormatStrFormatter("%.2f"))
+
+            if axes_plot_titles:
+                axes[i].title.set_text(axes_plot_titles[0][i])
+                if i == 0:
+                    axes[0].set_ylabel(axes_plot_titles[2])
+
+    plt.tight_layout()
+
+    if show:
+        plt.show()
+    else:
+        plt.savefig(save_location, dpi=dpi, bbox_inches="tight")
+
+    plt.close()
 
 
 
