@@ -141,9 +141,10 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
             cca = CCA()
             cca.fit_cca_svd(train_x, train_y, lambda_x=lambda_x, lambda_y=lambda_y)
 
-            # predict on training
-            predicted_train_x = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, train_val_y, cca.CanCorr, out_dim,
-                                            out_mean = x_mean, probabilistic = probabilistic, sample_size = prob_sample_size)
+                # predict on training
+                if assess_train_metrics:
+                    predicted_train_x = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, train_val_y, cca.CanCorr, out_dim,
+                                                out_mean = x_mean, probabilistic = probabilistic, sample_size = prob_sample_size)
 
             # predict on validation
             predicted_val_x = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, val_y_n, cca.CanCorr, out_dim,
