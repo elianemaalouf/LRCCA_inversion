@@ -332,6 +332,9 @@ def run_inversion_eval(inversion_data, cca_obj, metrics, xp_config_folder, confi
     metrics_params = metrics['params']
 
     results = {}
+    ids_examples_to_plot = None
+    ids_samples_to_plot = None
+
     for noise_label in noise_labels:
 
         n = inversion_data[noise_label]['predicted'].shape[0]
@@ -352,10 +355,10 @@ def run_inversion_eval(inversion_data, cca_obj, metrics, xp_config_folder, confi
         # plot predictions examples
         # select random indices
         examples_to_plot = 1 if n==1 else 4
-        ids_examples_to_plot = select_random_indices(n, examples_to_plot, with_replacement=False)
+        ids_examples_to_plot = select_random_indices(n, examples_to_plot, with_replacement=False) if ids_examples_to_plot is None else ids_examples_to_plot
         samples_per_example = min(m, 3)
         ids_samples_to_plot = np.array([select_random_indices(m, samples_per_example, with_replacement=False)
-                               for _ in range(examples_to_plot)])
+                               for _ in range(examples_to_plot)]) if ids_samples_to_plot is None else ids_samples_to_plot
 
         #ids_samples_to_plot = select_random_indices(m, samples_per_example, with_replacement=False) if m > 1 else 0
 
@@ -383,7 +386,7 @@ def run_inversion_eval(inversion_data, cca_obj, metrics, xp_config_folder, confi
                            for i in range(0, len(rmse_values_flat), samples_per_example)]
 
         evals.plot_samples(examples, width, height, rmse_labels=rmse_values,
-                           grd_truth=True, save_location=f"{xp_config_folder}/{noise_label}_predictions.pdf",)
+                           grd_truth=True, save_location=f"{xp_config_folder}/{noise_label}_predictions_{ids_examples_to_plot}.pdf",)
 
         # plot transformation matrices
         # X
