@@ -119,9 +119,12 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
         print(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} "
               f"Running validation for noise type:{noise_label}")
 
-        results[noise_label] = {}
-        results[noise_label]['train'] = {}
-        results[noise_label]['val'] = {}
+            # check if results is empty, if so, initialize it, else, leave it as is
+            if noise_label not in results:
+                results[noise_label] = {}
+                if assess_train_metrics:
+                    results[noise_label]['train'] = {}
+                results[noise_label]['val'] = {}
 
         # make structure for all validation types
         for validation_type in validation_types:
