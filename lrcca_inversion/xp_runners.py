@@ -95,10 +95,14 @@ def run_validation(lambda_combinations, validations_dict, probabilistic, prob_sa
                                     # the training of CCA will be done with subset of size train_subset_size
     results = {}
 
-    # Select a random subset of the training data (for validation)
-    train_val_subset_indices = select_random_indices(full_train_size, val_sample_size, with_replacement=False)
-    train_val_x = train_x[train_val_subset_indices, :]
-    train_val_y = train_y[train_val_subset_indices, :]
+    for _ in range(validation_repeats):
+        print(f"Validation repeath number {_ + 1} of {validation_repeats}")
+
+        # Select a random subset of the training data (for validation)
+        if assess_train_metrics:
+            train_val_subset_indices = select_random_indices(full_train_size, val_subset_size, with_replacement=False)
+            train_val_x = train_x_orig[train_val_subset_indices, :]
+            train_val_y = train_y_orig[train_val_subset_indices, :]
 
     # Select a random subset of the training data (for training)
     train_subset_indices = select_random_indices(full_train_size, train_subset_size, with_replacement=False)
