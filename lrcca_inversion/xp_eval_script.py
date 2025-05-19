@@ -63,11 +63,23 @@ if xp_config['run_validations']:
         # Run the reference statistics
         reference_metrics = run_reference_metrics(n=100, m=500, train_x=train_x, val_x=val_x, x_mean=x_mean,
                                                   metric_dict=xp_config['validations'])
-        # Save the reference metrics to disk
-        save_to_disk(reference_metrics, f"{BASE_DIR}/Experiments/reference_val_metrics.pkl")
     else:
-        # Load the reference metrics from disk
-        reference_metrics = load_from_disk(f"{BASE_DIR}/Experiments/reference_val_metrics.pkl")
+        print("for test...")
+        test_vecs_ids_to_invert = xp_config['test_vecs_ids_to_invert'] if xp_config['test_vecs_ids_to_invert'] is not None else None
+
+        reference_metrics = run_inv_reference_metrics(n = None, m=500, train_x=train_x, test_x = test_x, test_ids= test_vecs_ids_to_invert,
+                                                      x_mean= x_mean, metric_dict=xp_config['validations'])
+
+    # Save the reference metrics to disk
+    save_to_disk(reference_metrics, f"{BASE_DIR}/Experiments/{xp_config['vs_train_refs_filename']}")
+else:
+    # Load the reference metrics from disk
+    reference_metrics = load_from_disk(f"{BASE_DIR}/Experiments/{xp_config['vs_train_refs_filename']}")
+
+if xp_config['run_validations']:
+    print("Running the validation evaluation...")
+    # import validation_data from disk
+    validation_data = load_from_disk(f"{xp_config['xp_folder']}/validation_data.pkl")
 
     # Run the validation evaluation and plots
     reference_metrics_list = [reference_metrics]
