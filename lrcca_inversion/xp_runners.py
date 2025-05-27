@@ -48,7 +48,54 @@ def sample_noise(noise_dict, sample_size, dim):
 
     return noise_sample, noise_label
 
-def run_metrics(predicted, true, metric, metric_param, reduced_sample_size = None):
+
+def get_y_obs_from_disk(ids_list, config, y_mean):
+    """
+    Extracts processed noisy observation vectors from disk files based on specified configurations and
+    returns them categorized by noise levels.
+
+    :param ids_list: A list of identifiers used to locate corresponding noisy test vectors.
+    :param config: Configuration object containing data folder paths, noise distribution details,
+        and other relevant parameters such as the number of rays.
+    :param y_mean: The mean value(s) to subtract from the loaded noisy vectors during preprocessing.
+    :return: A dictionary where each key represents a noise category ("small_noise" or "large_noise")
+        and the value is a 2D numpy array containing the processed observation vectors for that
+        category.
+    :rtype: dict
+    """
+    import pickle
+
+    test_y = {}
+    noises_list = config.noises_list
+    data_folder_location = config.data_folder_location
+
+    for noise_i in noises_list:
+        noise_distribution = noise_i["distribution"]
+        noise_loc = noise_i["location"]
+        noise_scale = noise_i["scale"]
+
+        if noise_scale < 2:
+            noise_label = "small_noise"
+        else:
+            noise_label = "large_noise"
+
+        test_y[noise_label] = np.zeros((len(ids_list), config.rays))
+
+        noise_test_y_folder = f"{data_folder_location}/noisy_ttvec_{noise_distribution}_loc{noise_loc}_scale{str(noise_scale).replace('.', 'p')}"
+
+        for i, vec_id in enumerate(ids_list):
+            # read y_obs
+            with open(f"{noise_test_y_folder}/noisy_tt_vec{vec_id}", "rb") as f:
+                y_obs = pickle.load(f)
+
+            y_obs = y_obs.numpy().reshape(-1, config.rays)
+            y_obs = y_obs - y_mean
+            test_y[noise_label][i, :] = y_obs
+
+    return test_y
+
+
+def run_metrics(predicted, true, metric, metric_param, reduced_sample_size=None):
     """
     Run the validation metrics for the given predicted and true values.
     """
