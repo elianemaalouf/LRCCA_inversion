@@ -460,6 +460,72 @@ def run_inversion_eval(inversion_data, cca_obj, metrics, xp_config_folder, confi
     # get vs training reference
 
     # make y_obs vs D_{y_resim} metrics
+    solver = config.solver_matrix  # shape (dim_y, dim_x)
+    y_resim = {}
+    y_resim_metrics = {}
+    resim_boxplot_data_dict = {}
+    loaded_y_resim = False
+
+    if Path(f"{xp_config['xp_folder']}/y_resim.pkl").exists():
+        y_resim = load_from_disk(f"{xp_config['xp_folder']}/y_resim.pkl")
+        loaded_y_resim = True
+
+    if Path(f"{xp_config['xp_folder']}/y_resim_metrics.pkl").exists():
+        y_resim_metrics = load_from_disk(
+            f"{xp_config['xp_folder']}/y_resim_metrics.pkl"
+        )
+        compute_resim_metrics = False
+    else:
+        compute_resim_metrics = True
+
+    if compute_resim_metrics:
+        if test_y is None:
+            test_y = get_y_obs_from_disk(
+                xp_config["test_vecs_ids_to_invert"], config, y_mean
+            )
+
+        for j, noise_label in enumerate(noise_labels):
+            y_resim[noise_label] = np.zeros((n, config.rays, m))
+            y_resim_metrics[noise_label] = {}
+            test_y_d = test_y[noise_label].copy() + y_mean
+
+            if not loaded_y_resim:
+                for i in range(n):
+                    predictions_i = inversion_data[noise_label]["predicted"][
+                        i, :, :
+                    ]  # shape (dim_x, m)
+                    y_resim[noise_label][i, :, :] = (
+                        solver @ predictions_i
+                    )  # shape (dim_y, m)
+
+            # compute metrics for y_obs vs D_{y_resim}
+            for i, metric in enumerate(metrics_types):
+
+                if metric not in resim_boxplot_data_dict:
+                    resim_boxplot_data_dict[metric] = {}
+
+                resim_boxplot_data_dict[metric][noise_label] = {}
+
+                y_resim_metrics[noise_label][metric] = run_metrics(
+                    y_resim[noise_label],
+                    test_y_d,
+                    metric,
+                    metrics_params[i],
+                    reduced_sample_size=None,
+                )
+                resim_boxplot_data_dict[metric][noise_label]["y_resim"] = (
+                    y_resim_metrics[noise_label][metric]
+                )
+
+                if j < len(noise_labels) - 1:
+                    continue
+                else:
+                    evals.make_inv_boxplots(
+                        resim_boxplot_data_dict,
+                        metric,
+                        references_dict=None,
+                        save_path=f"{xp_config['xp_folder']}/test_resims_{metric}_dist.pdf",
+                    )
 
     pass
 
