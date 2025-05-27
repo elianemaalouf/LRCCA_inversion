@@ -12,10 +12,12 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def load_config(path):
     """
-    Load the configuration dictionary from a JSON file.
+    Loads a configuration file in JSON format from the given file path and returns its contents as a dictionary.
 
-    path:
-        Path to the JSON file.
+    :param path: str
+        The file path to the JSON configuration file.
+    :return: dict
+        The contents of the JSON file as a dictionary.
     """
     with open(path, 'r') as f:
         config_dict = json.load(f)
@@ -23,12 +25,14 @@ def load_config(path):
 
 def save_config(config_dict, path):
     """
-    Save the configuration dictionary to a JSON file.
+    Save a configuration dictionary to a JSON file at the specified path. If the
+    directory does not exist, it will be created, including any required parent
+    directories.
 
-    config_dict:
-        Dictionary containing the configuration parameters.
-    path:
-        Path to save the JSON file.
+    :param config_dict: Dictionary containing configuration data to be saved in JSON format.
+    :param path: Path to the directory where the JSON file will be saved. The filename
+                 will always be 'config.json'.
+    :return: None
     """
     exp_dir = Path(path)
     exp_dir.mkdir(parents=True, exist_ok=True)
@@ -37,9 +41,10 @@ def save_config(config_dict, path):
         json.dump(config_dict, f, indent=4)
 
 # new experiment to add
-xp_name = "prob_preds_reg_n500_cv5_es1"
+xp_name = "prob_preds_inv_n500_resims_ly_exp9"
 probabilistic = True
-run_validations = True # run validations or inversions
+run_validations = False # run validations or inversions
+train_subset = 500
 
 root_folder = "probabilistic_preds" if probabilistic else "deterministic_preds"
 prob_sample_size = 500 if probabilistic else 1
@@ -49,24 +54,24 @@ assess_training_metrics = False if probabilistic else True
 xp_config = {
     "xp_name": xp_name,
     "xp_folder": f"{BASE_DIR}/Experiments/{root_folder}/{xp_name}",
-    "train_subset": 500,
+    "train_subset": train_subset,
     "val_subset_size": val_subset_size,
     "assess_train_metrics":assess_training_metrics,
-    "lambda_x_vec":[1e-4, 1e-3, 1e-2, 1e-1, 1, 10],
-    "lambda_y_vec":[0, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10],
+    "lambda_x_vec":[1e-4],
+    "lambda_y_vec":[0.01],
     "run_validations": run_validations,
     "validation_repeats":5,
-    "validations":{'types':['es'],
-                   'params':[1]},
+    "validations":{'types':['rmse','es', 'vs'],
+                   'params':[None, 1, 0.5]},
     "probabilistic": probabilistic,
     "prob_sample_size": prob_sample_size,
     "parameters_file": f"{BASE_DIR}/Data/parameters_matern32_Mu10_Var1p96_CorH30_CorV15_linear_81.txt",
-    "test_vecs_ids_to_invert": None, #[102, 106, 270, 435, 860, 154, 253, 309, 548, 966, 385, 498, 583, 608, 836, 900, 10, 18,
-    #19, 20, 1, 3, 45, 96, 140, 157, 179, 191, 204, 223, 262, 269, 283, 304, 305, 347, 363, 379, 506, 517, 521, 546, 573,
-    #607, 656, 664, 671, 680, 792, 801,],
+    "test_vecs_ids_to_invert": [102, 106, 270, 435, 860, 154, 253, 309, 548, 966, 385, 498, 583, 608, 836, 900, 10, 18,
+    19, 20, 1, 3, 45, 96, 140, 157, 179, 191, 204, 223, 262, 269, 283, 304, 305, 347, 363, 379, 506, 517, 521, 546, 573,
+    607, 656, 664, 671, 680, 792, 801,],
 }
 
-vs_train_refs_filename = "reference_val_metrics_es2_vs05_rmse.pkl" if 'rmse' in xp_config['validations']['types'] else "reference_val_metrics_es1.pkl" # "reference_inv_metrics_es1_vs05_rmse.pkl" #
+vs_train_refs_filename = "reference_inv_metrics_es1_vs05_rmse.pkl" # "reference_val_metrics_es2_vs05_rmse.pkl" if 'rmse' in xp_config['validations']['types'] else "reference_val_metrics_es1.pkl" #
 
 # make det_preds_refs :
 if not probabilistic:

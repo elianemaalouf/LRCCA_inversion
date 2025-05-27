@@ -4,22 +4,28 @@
 """
 
 import ast
-import os
 import random
 
 import numpy as np
 import torch
 
+
 def get_prior(h5_file, mu):
     """
-    Function to read the covariance matrix from a h5 file
+    Get prior information including covariance matrix, mean vector, and
+    the square root of the covariance matrix for a Gaussian field prior.
 
-    h5_file:
-        h5 file containing the covariance matrix
-    mu:
-        mean of the Gaussian field prior
+    This function reads an HDF5 file containing a Gaussian covariance matrix,
+    applies Cholesky decomposition to compute its square root, and constructs
+    a mean vector filled with a specified constant value.
 
-    :returns: a dictionary containing the covariance matrix and the size of the output of the solver
+    :param h5_file: Path to the HDF5 file containing the Gaussian covariance matrix.
+    :param mu: The value to populate the mean vector with.
+    :return: A dictionary containing:
+        - **ntot** (*int*): Dimensionality of the covariance matrix.
+        - **covariance_matrix** (*np.ndarray*): The covariance matrix extracted from the HDF5 file.
+        - **covM_squareRoot** (*np.ndarray*): Cholesky decomposition (square root) of the covariance matrix.
+        - **prior_mean** (*np.ndarray*): A mean vector for the prior distribution.
     """
     import h5py
 
@@ -42,14 +48,19 @@ def get_prior(h5_file, mu):
         "prior_mean": m_prior,
     }
 
+
 def get_linear_solver(h5_file):
     """
-    Function to read the linear solver matrix from a h5 file
+    Retrieve a linear solver matrix from an HDF5 file and return it along with
+    the number of data points (rows) in the matrix.
 
-    h5file:
-        h5 file containing the linear solver matrix
+    The function reads an HDF5 file specified by the provided file path to
+    extract a dataset named "LinearSolverMatrix." The dataset is converted
+    into a NumPy array and returned alongside its dimensions.
 
-    :returns: a dictionary containing the solver matrix and the size of the output of the solver
+    :param h5_file: The file path of the HDF5 file containing the linear solver matrix.
+    :return: A dictionary containing the solver matrix under the key "solver_matrix"
+        and the number of rows of the matrix under the key "ndata".
     """
     import h5py
 
@@ -60,13 +71,23 @@ def get_linear_solver(h5_file):
 
     return {"solver_matrix": F_matrix, "ndata": F_matrix.shape[0]}
 
+
 class Config:
     """Class to read environment configuration parameters for Goephysics applications."""
 
     def __init__(self, parameters_file, setup_solver=True, setup_prior=True):
         """
-        Initializes Config instance attributes from values stored in a configuration file on disk.
-        :param parameters_file: configuration file
+        Initializes the class instance by loading configuration parameters from a file,
+        fixing random seeds, and optionally setting up the prior mean and covariance,
+        along with a forward solver if required. The configuration parameters are read
+        from the provided file and used to configure various attributes related to
+        Gaussian fields, solver setup, data directories, and model characteristics.
+
+        :param parameters_file: Path to the file containing model configuration parameters.
+        :param setup_solver: A flag indicating whether to set up the forward solver. Defaults to True.
+        :param setup_prior: A flag indicating whether to set up the prior mean and covariance matrix. Defaults to True.
+
+        :raises ValueError: If the solver type specified in the configuration file is not supported.
         """
         with open(parameters_file) as f:
             self.parameters = f.read()
@@ -132,16 +153,20 @@ class Config:
         if setup_solver:
             # setup forward solver _ only linear solver here
             if self.solver_type == "linear":
-                self.solver_setup_dict = get_linear_solver(f"{self.data_folder_location}/linearForwardMatrix.h5")
+                self.solver_setup_dict = get_linear_solver(
+                    f"{self.data_folder_location}/linearForwardMatrix.h5"
+                )
                 self.solver_matrix = self.solver_setup_dict["solver_matrix"]
                 self.ndata = self.solver_setup_dict["ndata"]
             else:
                 raise ValueError("Solver type not supported")
 
+
 if __name__ == "__main__":
     import os
-    os.chdir('/home/dl-rookie/PycharmProjects/LRCCA_inversion')
-    parameters_file = "./Data/parameters_matern32_Mu10_Var1p96_CorH30_CorV15_linear_81.txt"
+
+    os.chdir("/home/dl-rookie/PycharmProjects/LRCCA_inversion")
+    parameters_file = (
+        "./Data/parameters_matern32_Mu10_Var1p96_CorH30_CorV15_linear_81.txt"
+    )
     params = Config(parameters_file)
-
-

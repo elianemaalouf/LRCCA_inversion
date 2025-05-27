@@ -13,6 +13,7 @@ import numpy as np
 import numpy.linalg as LA
 from scipy import linalg as sLA
 
+
 def _destandardize(_x, dim, _mean=None, _std=None):
     if _mean is None:
         _mean = np.zeros(dim)
@@ -22,19 +23,62 @@ def _destandardize(_x, dim, _mean=None, _std=None):
     _std = _std.reshape(-1, 1)
     return _x * _std + _mean
 
+
 class CCA:
     def __init__(self):
-        self.x_dim = None # dimension of x, i.e., d
-        self.y_dim = None # dimension of y, i.e., p
+        """
+        Class to hold the attributes necessary for canonical correlation analysis (CCA). The class
+        includes transformation matrices, canonical correlation values, data covariance matrices,
+        and regularization parameters.
+
+        Attributes
+        ----------
+        x_dim : int or None
+            Dimension of variable x (denoted as `d`).
+        y_dim : int or None
+            Dimension of variable y (denoted as `p`).
+        r : int or None
+            Canonical space dimension.
+        T_x_full : Any or None
+            Full transformation matrix for x (denoted as `A`).
+        T_y_full : Any or None
+            Full transformation matrix for y (denoted as `B`).
+        T_x_full_inv_T : Any or None
+            Transposed inverse of the full transformation matrix for x (denoted as `A^{-1}.T`).
+        T_y_full_inv_T : Any or None
+            Transposed inverse of the full transformation matrix for y (denoted as `B^{-1}.T`).
+        T_x_can : Any or None
+            Canonical transformation matrix for x only.
+        T_y_can : Any or None
+            Canonical transformation matrix for y only.
+        T_x_can_inv_T : Any or None
+            Inverse transformation of x canonical transformations only.
+        T_y_can_inv_T : Any or None
+            Inverse transformation of y canonical transformations only.
+        CanCorr : Any or None
+            Canonical correlation values between canonical variables.
+        DataCov_noreg : Any or None
+            Full original data covariance matrix (unregularized).
+        C_x : Any or None
+            Covariance matrix of x.
+        C_y : Any or None
+            Covariance matrix of y.
+        C_xy : Any or None
+            Cross-covariance matrix between x and y.
+        lambda_x : float
+            Regularization parameter for x.
+        lambda_y : float
+            Regularization parameter for y.
+        null_dims : Any or None
+            Dimensions associated with null space components.
+        """
+        self.x_dim = None  # dimension of x, i.e., d
+        self.y_dim = None  # dimension of y, i.e., p
         self.r = None  # canonical space dimension
         self.T_x_full = None  # full transformation matrix for x, i.e., A
         self.T_y_full = None  # full transformation matrix for y, i.e., B
-        self.T_x_full_inv_T = (
-            None  # transposed inverse of the full transformation matrix for x, i.e., A^{-1}.T
-        )
-        self.T_y_full_inv_T = (
-            None  # transposed inverse of the full transformation matrix for y, i.e., B^{-1}.T
-        )
+        self.T_x_full_inv_T = None  # transposed inverse of the full transformation matrix for x, i.e., A^{-1}.T
+        self.T_y_full_inv_T = None  # transposed inverse of the full transformation matrix for y, i.e., B^{-1}.T
         self.T_x_can = None  # canonical transformations only
         self.T_y_can = None  # canonical transformation only
         self.T_x_can_inv_T = None  # inverse of x canonical transformations only
@@ -50,24 +94,17 @@ class CCA:
 
     def fit_cca_svd(self, X, Y, lambda_x=0, lambda_y=0):
         """
-        Function that finds linear CCA transformations of X and Y.
-        The solution is based on the Singular Value Decomposition (SVD) of cov(X,X)^(-1/2).cov(X,Y).cov(Y,Y)^(-1/2).
-        Partially adapted from https://github.com/gwgundersen/ml/blob/master/canonical_correlation_analysis.py
-        Data should be previously mean-centered.
+        Performs Canonical Correlation Analysis (CCA) using Singular Value Decomposition (SVD).
+        CCA is a statistical technique used to study the relationships between two sets of
+        variables, finding linear combinations of variables from each set that are maximally
+        correlated with each other. The function computes the canonical correlation values
+        along with the transformation matrices for the input datasets `X` and `Y`.
 
-        X
-         First set of variables. Shaped as (number of examples, dim of X). Should be the training set
-        Y
-         Second set of variables. Shaped as (number of examples, dim of Y). Should be the training set
-        lambda_x
-         This parameter is added on the diagonal of cov(X,X), for regularized CCA
-         When this parameter is 0, no regularization is applied.
-        lambda_y
-         This parameter is added on the diagonal of cov(Y,Y), for regularized CCA
-         When this parameter is 0, no regularization is applied.
-
-        Note: our code assumes that dim(X) > dim(Y) and they have the same number of samples.
-              We work with full-rank matrices.
+        :param X: The first dataset of shape (n_samples, n_features_X).
+        :param Y: The second dataset of shape (n_samples, n_features_Y).
+        :param lambda_x: Regularization parameter for the X dataset, default is 0.
+        :param lambda_y: Regularization parameter for the Y dataset, default is 0.
+        :return: None. All results are stored as attributes of the instance.
         """
 
         n, d = X.shape
@@ -94,7 +131,9 @@ class CCA:
 
         # check first if full-rank:
         if np.linalg.matrix_rank(C_xx) < d or np.linalg.matrix_rank(C_yy) < p:
-            raise ValueError("CCA SVD: Covariance matrices are not full-rank. Cannot perform CCA.")
+            raise ValueError(
+                "CCA SVD: Covariance matrices are not full-rank. Cannot perform CCA."
+            )
         else:
             self.eig_C_x_vals, self.eig_C_x_vecs = np.linalg.eigh(C_xx)
             self.eig_C_y_vals, self.eig_C_y_vecs = np.linalg.eigh(C_yy)
@@ -133,7 +172,6 @@ class CCA:
                         "CCA SVD: Imaginary part of the square-root of the covariance matrices is too large. "
                         "Cannot perform CCA."
                     )
-
 
         M = np.matmul(np.matmul(Cxx_sqrt_inv, C_xy), Cyy_sqrt_inv)
 
@@ -181,81 +219,98 @@ class CCA:
     @staticmethod
     def reduce(data, T_matrix):
         """
-        Function to transform a given dataset into its canonical variates.
+        Reduces the dimensionality of the given data based on the transformation matrix.
 
-        data
-         The dataset to reduce. Shaped as (number of examples, data_dim)
-        T_matrix
-         The transformation matrix fitted with fit_cca_svd.
-         Expected as (data_dim x r) or the full transformation matrix (data_dim x data_dim).
+        This method applies a matrix multiplication between the transpose of the
+        transformation matrix and the transpose of the data. The result is reshaped
+        to a specific dimension based on the number of rows in the transformation
+        matrix. The primary purpose of this function is to generate a lower-dimensional
+        representation of the data while retaining significant variance as defined
+        by the transformation matrix.
 
-        :return: canonical variates of the dataset x.
-                 Outputs column vectors (r x number of examples) or (data_dim x number of examples)
+        :param data: The original data to be transformed. Must be a 2-dimensional
+            array where each row represents a data sample and each column represents
+            a feature.
+        :param T_matrix: Transformation matrix used to reduce the dimensionality of
+            the data. The number of columns in this matrix must match the number
+            of columns in the data.
+        :return: The reduced dimensional representation of the input data, reshaped
+            to the number of rows in the transformation matrix and the corresponding columns.
         """
         # can_variates = T_matrix.T * data.T
         can_variates = np.matmul(T_matrix.T, data.T)
         return can_variates.reshape(T_matrix.shape[1], -1)
 
     @staticmethod
-    def reconstruct(T_matrix_inv_T, can_variates, data_dim, data_mean=None, data_std=None):
+    def reconstruct(
+        T_matrix_inv_T, can_variates, data_dim, data_mean=None, data_std=None
+    ):
         """
-        Function to reconstruct the original variable from its canonical variates.
+        Reconstructs the original data based on the provided inverse transformation
+        matrix, canonical variates, and optional de-standardization parameters.
 
-        T_matrix_inv_T
-            Transpose of the inverse of the (or the full) canonical transformation matrix of the variable to be reconstructed
-        can_variates
-            The canonical variates to be transformed back to the original space. Expected as (r x number of examples).
-        data_dim
-            Dimension of the variable in the original space
-        data_mean
-            Mean of the variable being reconstructed, computed on the training set
-        data_std
-            Standard deviation of the variable being reconstructed, computed on the training set
+        This method computes the original data by applying the inverse transformation
+        to the canonical variates, optionally de-standardizing the data using provided
+        mean and standard deviation, and then reshaping it to the specified dimensions.
 
-        :return: the data in the original space in the form (data_dim x number of examples)
+        :param T_matrix_inv_T: The inverse of the transformation matrix transposed,
+            used to revert the canonical variates to the original data space.
+
+        :param can_variates: The transformed data in the canonical variates space
+            which needs to be reverted.
+
+        :param data_dim: The dimensions to which the reconstructed data should be
+            reshaped after reversion, specified as a tuple.
+
+        :param data_mean: The mean values used for de-standardization of the data.
+            This is optional and used if the data was standardized earlier. Defaults to None.
+
+        :param data_std: The standard deviation values used for de-standardization
+            of the data. This is optional and used if the data was standardized earlier. Defaults to None.
+
+        :return: The reconstructed data reshaped to the specified dimensions.
         """
         # can_variates = T_matrix.T * data.T
         # data = T_matrix_inv_T * can_variates
 
         data = np.matmul(T_matrix_inv_T, can_variates)
 
-        data = _destandardize(
-            data, dim=data_dim, _mean=data_mean, _std=data_std
-        )
+        data = _destandardize(data, dim=data_dim, _mean=data_mean, _std=data_std)
 
         return data.reshape(data_dim, -1)
 
     @staticmethod
-    def make_z_posterior(z_obs, canCorr, null_dims, square_root_cov = True):
+    def make_z_posterior(z_obs, canCorr, null_dims, square_root_cov=True):
         """
-        Function to make the posterior distribution of the canonical variates.
+        Creates the posterior distribution for canonical variates using the observed data,
+        canonical correlations, and specified dimensions of null space.
 
-        z_obs:
-            The canonical variates of the new input data to be inverted, e,g. y_obs.
-
-        canCorr:
-            The canonical correlation values.
-
-        null_dims:
-            The number of dimensions that are not part of the CCA.
-
-        square_root_cov:
-            Whether to return the square root of the covariance matrix (True) or the covariance matrix itself (False).
-
-        :return: the mean and covariance of the canonical variates.
+        :param z_obs: Observed canonical variates. Shape (r,) or (r, 1).
+        :param canCorr: Canonical correlations of shape (r,).
+        :param null_dims: Number of null dimensions to append to the model.
+        :param square_root_cov: Indicates whether to return the square root of the covariance
+            matrix (True) or the full covariance matrix (False). Default is True.
+        :return: Tuple containing:
+            - z_mean: Mean vector of the canonical variates. Shape (output_dim, 1).
+            - z_cov: Either the square root of the covariance matrix (if square_root_cov=True)
+              or the full covariance matrix (if square_root_cov=False). Shape (output_dim, output_dim).
         """
         r = len(canCorr)
         z_obs = z_obs.reshape(r, 1)  # shape (r x 1)
         # make canonical variates mean vector
         z_mean = np.matmul(np.diag(canCorr), z_obs)  # shape (r x 1)
-        z_mean = np.append(z_mean, np.zeros((null_dims,1)), axis=0).reshape(-1, 1)  # shape (out_dim x 1)
+        z_mean = np.append(z_mean, np.zeros((null_dims, 1)), axis=0).reshape(
+            -1, 1
+        )  # shape (out_dim x 1)
 
         # make canonical variates square root of the covariance matrix
-        z_sq_cov = np.sqrt(np.eye(r) - np.diag(canCorr ** 2))
+        z_sq_cov = np.sqrt(np.eye(r) - np.diag(canCorr**2))
         z_sq_cov = np.append(z_sq_cov, np.zeros((r, null_dims)), axis=1)
-        z_sq_cov = np.append(z_sq_cov,
-                             np.append(np.zeros((null_dims, r)), np.eye(null_dims), axis=1),
-                             axis=0)
+        z_sq_cov = np.append(
+            z_sq_cov,
+            np.append(np.zeros((null_dims, r)), np.eye(null_dims), axis=1),
+            axis=0,
+        )
         if square_root_cov:
             # return the square root of the covariance matrix
             return z_mean, z_sq_cov
@@ -263,34 +318,35 @@ class CCA:
             return z_mean, z_sq_cov @ z_sq_cov.T
 
     @staticmethod
-    def predict(T_matrix_out_inv_T, T_matrix_in, new_in_data, canCorr, out_dim, out_mean=None, out_std=None,
-                probabilistic=False, **kwargs):
+    def predict(
+        T_matrix_out_inv_T,
+        T_matrix_in,
+        new_in_data,
+        canCorr,
+        out_dim,
+        out_mean=None,
+        out_std=None,
+        probabilistic=False,
+        **kwargs
+    ):
         """
-        Function to predict one variable (out) from another (in) using the canonical transformation matrices.
+        Predict the outputs using input data and precomputed projection matrices, canonical correlations,
+        and other configurations. This function allows for deterministic or probabilistic prediction generation
+        depending on the value of `probabilistic`. For probabilistic predictions, sampling from the posterior
+        distribution is performed based on provided or default configurations.
 
-        T_matrix_out_inv_T
-            Transpose of the inverse of the canonical transformation matrix of the variable to be predicted (out)
-        T_matrix_in
-            Transformation matrix of the input variable.
-            Expected as (in_dim x r), r should be equal to the length of canCorr
-        new_in_data
-            The new input data to be inverted, e,g. y_obs.
-            Expected as (number of examples, in_dim).
-        canCorr
-            Canonical correlation values
-        out_dim
-            Dimension of the variable to be predicted (out)
-        out_mean
-            Mean of the variable to be predicted (out), computed on the training set
-        out_std
-            Standard deviation of the variable to be predicted (out), computed on the training set
-        probabilistic
-            Whether to make a deterministic (False) or probabilistic (True) prediction.
-        kwargs
-            Parameters to pass to the probabilistic prediction function (if any), for example, the output sample_size
-            from the posterior distribution.
-
-        :return: the predictions, shaped (number of examples, out_dim, sample_size).
+        :param T_matrix_out_inv_T: Precomputed transformation matrix for output space.
+        :param T_matrix_in: Precomputed transformation matrix for input space.
+        :param new_in_data: The new input data samples for which predictions are made.
+        :param canCorr: Array of canonical correlation coefficients computed during the training phase.
+        :param out_dim: Dimensionality of the output space or the number of reconstructed output features.
+        :param out_mean: Mean vector for output features used for reconstruction. Defaults to None.
+        :param out_std: Standard deviation vector for output features used for reconstruction. Defaults to None.
+        :param probabilistic: Whether to perform probabilistic prediction. Defaults to False.
+        :param kwargs: Additional parameters such as `sample_size` for probabilistic sampling.
+        :return: A numpy array containing the predictions. The shape depends on the probabilistic flag.
+                 For deterministic prediction: (num_samples, out_dim, 1).
+                 For probabilistic prediction: (num_samples, out_dim, sample_size).
         """
         in_samples = new_in_data.shape[0]
         r = len(canCorr)
@@ -307,9 +363,13 @@ class CCA:
 
             # complement with zeros the canonical variates (if mistmatched dimensions)
             new_out_can_variates = np.matmul(np.diag(canCorr), new_in_can_variates)
-            new_out_can_variates = np.append(new_out_can_variates, np.zeros((null_dims, in_samples)), axis=0)
+            new_out_can_variates = np.append(
+                new_out_can_variates, np.zeros((null_dims, in_samples)), axis=0
+            )
 
-            predictions = CCA.reconstruct(T_matrix_out_inv_T,new_out_can_variates, out_dim, out_mean, out_std)
+            predictions = CCA.reconstruct(
+                T_matrix_out_inv_T, new_out_can_variates, out_dim, out_mean, out_std
+            )
 
             return predictions.T.reshape(in_samples, out_dim, sample_size)
         else:
@@ -317,10 +377,14 @@ class CCA:
             sample_size = kwargs.get("sample_size", 100)
 
             def sample_z_posterior(new_in_can_var_vec):
-                z_mean, z_sq_cov = CCA.make_z_posterior(new_in_can_var_vec, canCorr, null_dims, square_root_cov=True)
+                z_mean, z_sq_cov = CCA.make_z_posterior(
+                    new_in_can_var_vec, canCorr, null_dims, square_root_cov=True
+                )
 
                 # sample canonical variates from the posterior distribution by sampling from standard normal and transforming
-                z_can = z_mean + z_sq_cov@np.random.randn(out_dim, sample_size) # shape (out_dim x sample_size)
+                z_can = z_mean + z_sq_cov @ np.random.randn(
+                    out_dim, sample_size
+                )  # shape (out_dim x sample_size)
 
                 return z_can
 
@@ -328,9 +392,12 @@ class CCA:
             for i in range(in_samples):
                 new_in_can_var_vec = new_in_can_variates[:, i]
                 z_can = sample_z_posterior(new_in_can_var_vec)
-                predictions[i, :, :] = CCA.reconstruct(T_matrix_out_inv_T, z_can, out_dim, out_mean, out_std)
+                predictions[i, :, :] = CCA.reconstruct(
+                    T_matrix_out_inv_T, z_can, out_dim, out_mean, out_std
+                )
 
             return predictions
+
 
 def test_probcca_vs_analytical(cca_obj, new_y_c):
     """
@@ -344,42 +411,54 @@ def test_probcca_vs_analytical(cca_obj, new_y_c):
 
     # make analytical solution mean and covariance
     C_y_inv = (
-            cca_obj.eig_C_y_vecs @ np.diag(1 / cca_obj.eig_C_y_vals) @ (cca_obj.eig_C_y_vecs).T
+        cca_obj.eig_C_y_vecs
+        @ np.diag(1 / cca_obj.eig_C_y_vals)
+        @ (cca_obj.eig_C_y_vecs).T
     )
 
     analytical_mean = np.matmul(np.matmul(cca_obj.C_xy, C_y_inv), new_y_c.T).reshape(-1)
     analytical_cov = cca_obj.C_x - cca_obj.C_xy @ C_y_inv @ (cca_obj.C_xy).T
 
-    analytical_sample = np.random.multivariate_normal(analytical_mean, analytical_cov, size=5000)
+    analytical_sample = np.random.multivariate_normal(
+        analytical_mean, analytical_cov, size=5000
+    )
     est_analytical_mean = np.mean(analytical_sample, axis=0)
     est_analytical_cov = np.cov(analytical_sample.T)
 
     # make probabilistic solution mean and covariance
     z_obs = CCA.reduce(new_y_c, cca_obj.T_y_can)
-    prob_cca_mean_z, prob_cca_cov_z = CCA.make_z_posterior(z_obs, cca_obj.CanCorr, cca_obj.null_dims, square_root_cov=False)
+    prob_cca_mean_z, prob_cca_cov_z = CCA.make_z_posterior(
+        z_obs, cca_obj.CanCorr, cca_obj.null_dims, square_root_cov=False
+    )
 
     prob_cca_mean = np.matmul(cca_obj.T_x_full_inv_T, prob_cca_mean_z).reshape(-1)
     prob_cca_cov = cca_obj.T_x_full_inv_T @ prob_cca_cov_z @ (cca_obj.T_x_full_inv_T).T
 
-    prob_cca_sample = np.random.multivariate_normal(prob_cca_mean, prob_cca_cov, size=5000)
+    prob_cca_sample = np.random.multivariate_normal(
+        prob_cca_mean, prob_cca_cov, size=5000
+    )
     est_prob_cca_mean = np.mean(prob_cca_sample, axis=0)
     est_prob_cca_cov = np.cov(prob_cca_sample.T)
 
     # check if the means are equal
-    assert np.allclose(analytical_mean, prob_cca_mean, atol=1e-10), "Means are not equal"
+    assert np.allclose(
+        analytical_mean, prob_cca_mean, atol=1e-10
+    ), "Means are not equal"
     # check if the covariances are equal
-    assert np.allclose(analytical_cov, prob_cca_cov, atol=1e-10), "Covariances are not equal"
+    assert np.allclose(
+        analytical_cov, prob_cca_cov, atol=1e-10
+    ), "Covariances are not equal"
 
     # estimations based on sampled data do not have to be equal, uncomment the next lines to check
 
-    #assert np.allclose(est_analytical_mean, analytical_mean, atol=1e-10), "Analytical mean and estimated means are not equal"
-    #assert np.allclose(est_analytical_cov, analytical_cov, atol=1e-10), "Analytical covariance and estimated covariances are not equal"
+    # assert np.allclose(est_analytical_mean, analytical_mean, atol=1e-10), "Analytical mean and estimated means are not equal"
+    # assert np.allclose(est_analytical_cov, analytical_cov, atol=1e-10), "Analytical covariance and estimated covariances are not equal"
 
-    #assert np.allclose(est_prob_cca_mean, prob_cca_mean, atol=1e-10), "Probabilistic mean and estimated means are not equal"
-    #assert np.allclose(est_prob_cca_cov, prob_cca_cov, atol=1e-10), "Probabilistic covariance and estimated covariances are not equal"
+    # assert np.allclose(est_prob_cca_mean, prob_cca_mean, atol=1e-10), "Probabilistic mean and estimated means are not equal"
+    # assert np.allclose(est_prob_cca_cov, prob_cca_cov, atol=1e-10), "Probabilistic covariance and estimated covariances are not equal"
 
-    #assert np.allclose(est_analytical_mean, est_prob_cca_mean, atol=1e-10), "Estimated means are not equal"
-    #assert np.allclose(est_analytical_cov, est_prob_cca_cov, atol=1e-10), "Estimated covariances are not equal"
+    # assert np.allclose(est_analytical_mean, est_prob_cca_mean, atol=1e-10), "Estimated means are not equal"
+    # assert np.allclose(est_analytical_cov, est_prob_cca_cov, atol=1e-10), "Estimated covariances are not equal"
 
 
 # test
@@ -387,8 +466,8 @@ if __name__ == "__main__":
     # test CCA
     X = np.random.randn(100, 10)
     Y = np.random.randn(100, 5)
-    x_mean= np.mean(X, axis=0)
-    y_mean= np.mean(Y, axis=0)
+    x_mean = np.mean(X, axis=0)
+    y_mean = np.mean(Y, axis=0)
     # mean center the data
     X = X - x_mean
     Y = Y - y_mean
@@ -417,12 +496,20 @@ if __name__ == "__main__":
     new_in_data = np.random.randn(1, 5)
     new_in_data = new_in_data - y_mean
 
-    predictions = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, new_in_data, cca.CanCorr, cca.x_dim)
+    predictions = CCA.predict(
+        cca.T_x_full_inv_T, cca.T_y_can, new_in_data, cca.CanCorr, cca.x_dim
+    )
     print("Predictions: ", predictions)
     # test predict with probabilistic
-    predictions_prob = CCA.predict(cca.T_x_full_inv_T, cca.T_y_can, new_in_data, cca.CanCorr, cca.x_dim,
-                                    probabilistic=True, sample_size=20)
+    predictions_prob = CCA.predict(
+        cca.T_x_full_inv_T,
+        cca.T_y_can,
+        new_in_data,
+        cca.CanCorr,
+        cca.x_dim,
+        probabilistic=True,
+        sample_size=20,
+    )
     print("Probabilistic predictions: ", predictions_prob)
-
 
     test_probcca_vs_analytical(cca, new_in_data)

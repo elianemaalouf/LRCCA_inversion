@@ -3,7 +3,9 @@ Evaluation and plotting functions.
 
 @author: elianemaalouf
 """
+
 import numpy as np
+
 
 def save_to_disk(data, filepath):
     """
@@ -19,11 +21,21 @@ def save_to_disk(data, filepath):
     Returns
     -------
     None
-    """
+
     import json
 
     with open(filepath, 'w') as f:
         json.dump(data, f, indent=4)
+    """
+    # raise DeprecationWarning to inform users that this function is deprecated
+    import warnings
+
+    warnings.warn(
+        "This function is deprecated. Use the save_to_disk function from lrcca_inversion.utils.generic_fn instead.",
+        DeprecationWarning,
+    )
+    pass
+
 
 def compute_stats(np_array):
     """
@@ -40,24 +52,27 @@ def compute_stats(np_array):
     """
     if np_array is not None:
         stats = {
-            'mean': np.mean(np_array),
-            'std': np.std(np_array),
-            'median': np.median(np_array)
+            "mean": np.mean(np_array),
+            "std": np.std(np_array),
+            "median": np.median(np_array),
         }
         # Calculate all quantiles at once
-        quantiles = np.quantile(np_array,
-                                q=[0.025, 0.25, 0.75, 0.975],
-                                interpolation="nearest")
-        stats.update({
-            'q025': quantiles[0],
-            'q25': quantiles[1],
-            'q75': quantiles[2],
-            'q975': quantiles[3]
-        })
+        quantiles = np.quantile(
+            np_array, q=[0.025, 0.25, 0.75, 0.975], interpolation="nearest"
+        )
+        stats.update(
+            {
+                "q025": quantiles[0],
+                "q25": quantiles[1],
+                "q75": quantiles[2],
+                "q975": quantiles[3],
+            }
+        )
         return stats
-    return {k: None for k in ['mean', 'std', 'median', 'q25', 'q75', 'q025', 'q975']}
+    return {k: None for k in ["mean", "std", "median", "q25", "q75", "q025", "q975"]}
 
-def get_best_param_comb(data_dict, metric, ref_stat = 'median'):
+
+def get_best_param_comb(data_dict, metric, ref_stat="median"):
     """
     Get the best parameter combination for a given metric.
 
@@ -77,9 +92,11 @@ def get_best_param_comb(data_dict, metric, ref_stat = 'median'):
     best_comb = {}
     for m in metric:
         if m not in data_dict.keys():
-            raise ValueError(f"Metric {m} not found in data dictionary. Available metrics: {list(data_dict.keys())}")
+            raise ValueError(
+                f"Metric {m} not found in data dictionary. Available metrics: {list(data_dict.keys())}"
+            )
 
-        #best_comb[m] = {}
+        # best_comb[m] = {}
         best_comb = {}
         for comb, values in data_dict[m].items():
             stats = compute_stats(values)
@@ -89,6 +106,7 @@ def get_best_param_comb(data_dict, metric, ref_stat = 'median'):
         best_comb = min(best_comb, key=best_comb.get)
 
     return best_comb
+
 
 def make_ref_dict(ref_data_dict_list, metric, noise_label=None):
     """
@@ -115,21 +133,24 @@ def make_ref_dict(ref_data_dict_list, metric, noise_label=None):
             ref_data_dict = ref_data_dict[noise_label]
 
         if metric not in ref_data_dict.keys():
-            raise ValueError(f"Metric {metric} not found in reference data dictionary. Available metrics: {list(ref_data_dict.keys())}")
+            raise ValueError(
+                f"Metric {metric} not found in reference data dictionary. Available metrics: {list(ref_data_dict.keys())}"
+            )
 
-        #if ref_data_dict[metric] is already a dict with keys 'lower', 'center', 'upper', skip the computation
+        # if ref_data_dict[metric] is already a dict with keys 'lower', 'center', 'upper', skip the computation
         if isinstance(ref_data_dict[metric], dict):
-            ref_dict[f'ref{i+1}'] = ref_data_dict[metric]
+            ref_dict[f"ref{i+1}"] = ref_data_dict[metric]
             continue
         # get the reference values
         stats = compute_stats(ref_data_dict[metric])
-        ref_dict[f'ref{i+1}'] = {
-            'lower': stats['q25'],
-            'center': stats['median'],
-            'upper': stats['q75']
+        ref_dict[f"ref{i+1}"] = {
+            "lower": stats["q25"],
+            "center": stats["median"],
+            "upper": stats["q75"],
         }
 
     return ref_dict
+
 
 # plotting functions
 def plots_imports():
@@ -142,6 +163,7 @@ def plots_imports():
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     return mpl, plt, make_axes_locatable, tick
+
 
 def base_config(
     mpl,
@@ -179,7 +201,16 @@ def base_config(
     mpl.rcParams["ps.fonttype"] = 42
     mpl.rcParams["lines.linewidth"] = 1
 
-def make_val_boxplots(data_dict, metric, references_dict= None, labels_dict = None, save_path=None, show = False, **kwargs):
+
+def make_val_boxplots(
+    data_dict,
+    metric,
+    references_dict=None,
+    labels_dict=None,
+    save_path=None,
+    show=False,
+    **kwargs,
+):
     """
     Create the boxplots for the chosen validation metrics for all the parameter combinations.
     data_dict:
@@ -212,12 +243,11 @@ def make_val_boxplots(data_dict, metric, references_dict= None, labels_dict = No
     combinations = list(data_dict.keys())
     lambda_x_vec = sorted(list(set([comb[0] for comb in combinations])))
     lambda_y_vec = sorted(list(set([comb[1] for comb in combinations])))
-    reduce_lambda_y_vec = kwargs.get('reduce_lambda_y_vec', False)
-    lambda_y_subset = kwargs.get('lambda_y_subset', 4)
+    reduce_lambda_y_vec = kwargs.get("reduce_lambda_y_vec", False)
+    lambda_y_subset = kwargs.get("lambda_y_subset", 4)
     if reduce_lambda_y_vec:
         # take only the last 4 values of lambda_y_vec
         lambda_y_vec = lambda_y_vec[-lambda_y_subset:]
-
 
     # make dataframe
     all_values_df = pd.DataFrame(columns=["lambda_x", "lambda_y", "value"])
@@ -225,22 +255,19 @@ def make_val_boxplots(data_dict, metric, references_dict= None, labels_dict = No
         if comb[1] not in lambda_y_vec:
             continue
         else:
-            new_data = pd.DataFrame({
-                "lambda_x": comb[0],
-                "lambda_y": comb[1],
-                "value": data_dict[comb]
-            })
+            new_data = pd.DataFrame(
+                {"lambda_x": comb[0], "lambda_y": comb[1], "value": data_dict[comb]}
+            )
         all_values_df = pd.concat([all_values_df, new_data], ignore_index=True)
 
-
     # get kwargs if any or set default values
-    whis_low = kwargs.get('whis_low', 2.5)
-    whis_high = kwargs.get('whis_high', 97.5)
-    lower_lim = kwargs.get('lower_lim', None)
-    upper_lim = kwargs.get('upper_lim', None)
-    h_axis_margin = kwargs.get('h_axis_margin', 0.7)
-    v_axis_margin = kwargs.get('v_axis_margin', 0.1)
-    x_ticks_step = kwargs.get('x_ticks_step', 1)
+    whis_low = kwargs.get("whis_low", 2.5)
+    whis_high = kwargs.get("whis_high", 97.5)
+    lower_lim = kwargs.get("lower_lim", None)
+    upper_lim = kwargs.get("upper_lim", None)
+    h_axis_margin = kwargs.get("h_axis_margin", 0.7)
+    v_axis_margin = kwargs.get("v_axis_margin", 0.1)
+    x_ticks_step = kwargs.get("x_ticks_step", 1)
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
 
@@ -259,28 +286,58 @@ def make_val_boxplots(data_dict, metric, references_dict= None, labels_dict = No
     if lower_lim is None:
         # take mininmum from data and references if any
         if references_dict is not None:
-            lower_lim = min(all_values_df["value"].min(), min([ref['lower'] for ref in references_dict.values()])) - v_axis_margin
+            lower_lim = (
+                min(
+                    all_values_df["value"].min(),
+                    min([ref["lower"] for ref in references_dict.values()]),
+                )
+                - v_axis_margin
+            )
         else:
             lower_lim = all_values_df["value"].min() - v_axis_margin
     if upper_lim is None:
         # take maximum from data and references if any
         if references_dict is not None:
-            upper_lim = max(all_values_df["value"].max(), max([ref['upper'] for ref in references_dict.values()])) + v_axis_margin
+            upper_lim = (
+                max(
+                    all_values_df["value"].max(),
+                    max([ref["upper"] for ref in references_dict.values()]),
+                )
+                + v_axis_margin
+            )
         else:
             upper_lim = all_values_df["value"].max() + v_axis_margin
 
     # draw reference lines if any, changing the color for each reference
     if references_dict is not None:
         for i, (ref_name, ref_values) in enumerate(references_dict.items()):
-            ax.axhline(ref_values['lower'], color=f"C{i}", linestyle=":", linewidth = 1, label=f"{ref_name} 25th percentile")
-            ax.axhline(ref_values['center'], color=f"C{i}", linestyle="--", linewidth = 1, label=f"{ref_name} median")
-            ax.axhline(ref_values['upper'], color=f"C{i}", linestyle="-.", linewidth = 1, label=f"{ref_name} 75th percentile")
+            ax.axhline(
+                ref_values["lower"],
+                color=f"C{i}",
+                linestyle=":",
+                linewidth=1,
+                label=f"{ref_name} 25th percentile",
+            )
+            ax.axhline(
+                ref_values["center"],
+                color=f"C{i}",
+                linestyle="--",
+                linewidth=1,
+                label=f"{ref_name} median",
+            )
+            ax.axhline(
+                ref_values["upper"],
+                color=f"C{i}",
+                linestyle="-.",
+                linewidth=1,
+                label=f"{ref_name} 75th percentile",
+            )
 
     # set axis labels and title
     if labels_dict is not None:
-        ax.set_title(labels_dict.get('plot_title', ''))
-        ax.set_xlabel(labels_dict.get('x_label', ''))
-        ax.set_ylabel(labels_dict.get('y_label', ''))
+        ax.set_title(labels_dict.get("plot_title", ""))
+        ax.set_xlabel(labels_dict.get("x_label", ""))
+        ax.set_ylabel(labels_dict.get("y_label", ""))
     else:
         ax.set_title(f"{metric} boxplots")
         ax.set_xlabel(r"$\log_{10}(\lambda_X)$")
@@ -317,86 +374,260 @@ def make_val_boxplots(data_dict, metric, references_dict= None, labels_dict = No
 
     plt.close()
 
-def plot_transformations(
-        T_matrix, dims, groups=3, number_of_comp=3, save_location=None, dpi=600
-    ):
-        """
-        Function to plot the first "number_of_comp" canonical transformations
-        T_matrix
-            the matrix of canonical transformations.
-        dims
-            provides the shape of the components to plot.
-            Should be either (1, dim) for a 1D vector or (height, width) for a 2D matrix
-        groups
-            number of grouped components to plot
-        number_of_comp
-            the number of components to plot per group. Total number of components is groups*number_of_comp
-        save_location
-            folder location where to save the resulting plot
-        dpi
-            the image resolution in dots per inch. Default: 600
-        """
 
-        mpl, plt, make_axes_locatable, tick = plots_imports()
-        base_config(mpl)
+def make_inv_boxplots(
+    data_dict,
+    metric,
+    references_dict=None,
+    labels_dict=None,
+    save_path=None,
+    show=False,
+    **kwargs,
+):
+    """
+    Create the boxplots for the chosen inversion metrics for all noise scenarios simultaneously. Shows probabilistic
+    and deterministic inversion results in the same plot.
 
-        T_matrix = T_matrix.T
-        height, width = dims
+    data_dict:
+        Dictionary containing the data to plot. It should be structured as follows:
+        {'rmse': {'small_noise': { 'prob': np.array([1,2,3]), 'det': np.array([4,5,6])},
+                    'large_noise': {'prob': np.array([7,8,9]), 'det': np.array([10,11,12])}}}.
+    metric:
+        the metric to plot. e.g. 'rmse', 'es', 'vs'. One metric at a time.
+    labels_dict:
+        a dictionary containing {'plot_title':'', 'x_label':'', 'y_label':''}.
+    references_dict:
+        a dictionary containing the reference values for the metrics. It should be structured as follows:
+        {'ref1': {'lower': value, 'center': value, 'upper': value},
+        'ref2': {'lower': value, 'center': value, 'upper': value}}.
+        For relevance of interpretation, the center value should represent a median and lower-upper should represent
+        IQR bounds.
+    save_path:
+        location where the plot will be stored as pdf.
+    kwargs:
+        configure plotting parameters. For example, 'whis_low', 'whis_high', 'lower_lim', 'upper_lim', 'h_axis_margin',
+        'v_axis_margin'.
+    """
 
-        for g in range(groups):
-            fig, axes = plt.subplots(nrows=1, ncols=number_of_comp)
+    import pandas as pd
+    import seaborn as sns
 
-            if hasattr(axes, "__len__"):
-                axes = axes
-            else:
-                axes = [axes]
+    mpl, plt, make_axes_locatable, tick = plots_imports()
+    base_config(mpl)
 
-            for i in range(number_of_comp):
-                if height == 1:
-                    im = axes[i].plot(
-                        T_matrix[g * number_of_comp + i, :].reshape(width)
+    noise_keys = list(data_dict[metric].keys())
+    pred_keys = list(data_dict[metric][noise_keys[0]].keys())
+
+    # make dataframe
+    all_values_df = pd.DataFrame(columns=["noise_type", "pred_type", "value"])
+
+    for noise_type in noise_keys:
+        for pred_type in pred_keys:
+            if noise_type not in data_dict[metric].keys():
+                continue
+            if pred_type not in data_dict[metric][noise_type].keys():
+                continue
+
+            new_data = pd.DataFrame(
+                {
+                    "noise_type": noise_type,
+                    "pred_type": pred_type,
+                    "value": data_dict[metric][noise_type][pred_type],
+                }
+            )
+            all_values_df = pd.concat([all_values_df, new_data], ignore_index=True)
+
+        # get kwargs if any or set default values
+        whis_low = kwargs.get("whis_low", 2.5)
+        whis_high = kwargs.get("whis_high", 97.5)
+        lower_lim = kwargs.get("lower_lim", None)
+        upper_lim = kwargs.get("upper_lim", None)
+        h_axis_margin = kwargs.get("h_axis_margin", 0.7)
+        v_axis_margin = kwargs.get("v_axis_margin", 0.1)
+        x_ticks_step = kwargs.get("x_ticks_step", 1)
+
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+
+        sns.boxplot(
+            x="noise_type",
+            y="value",
+            data=all_values_df,
+            hue="pred_type",
+            ax=ax,
+            fliersize=2,
+            palette="vlag",
+            whis=[whis_low, whis_high],
+        )
+
+        # set lower and upper limits based on data.
+        if lower_lim is None:
+            # take mininmum from data and references if any
+            if references_dict is not None:
+                lower_lim = (
+                    min(
+                        all_values_df["value"].min(),
+                        min([ref["lower"] for ref in references_dict.values()]),
                     )
-                    axes[i].spines["right"].set_visible(False)
-                    axes[i].spines["top"].set_visible(False)
-                    axes[i].set_xlim([0, width - 1])
-                    axes[i].set_xticks(list(range(0, width, 20)))
-                    axes[i].set_xticklabels([str(x) for x in range(0, width, 20)])
-
-                else:
-                    im = axes[i].imshow(
-                        T_matrix[g * number_of_comp + i, :].reshape(height, width)
-                    )
-                    axes[i].set_xticks([])
-                    axes[i].set_yticks([])
-                    ax_divider = make_axes_locatable(axes[i])
-                    cax = ax_divider.append_axes(
-                        "right", size="5%", pad="2%", frameon=False
-                    )
-                    cax.set_xticks([])
-                    cax.set_yticks([])
-
-                    fig.colorbar(
-                        im, cax=cax, format=tick.FormatStrFormatter("%.2f")
-                    )  # , extend = 'both')
-
-                axes[i].title.set_text(
-                    "Transform. #{}".format(g * number_of_comp + i + 1)
+                    - v_axis_margin
                 )
-            plt.tight_layout()
-            plt.savefig(save_location.format(g), dpi=dpi, bbox_inches="tight")
+            else:
+                lower_lim = all_values_df["value"].min() - v_axis_margin
+        if upper_lim is None:
+            # take maximum from data and references if any
+            if references_dict is not None:
+                upper_lim = (
+                    max(
+                        all_values_df["value"].max(),
+                        max([ref["upper"] for ref in references_dict.values()]),
+                    )
+                    + v_axis_margin
+                )
+            else:
+                upper_lim = all_values_df["value"].max() + v_axis_margin
 
-            plt.close()
+        # draw reference lines if any, changing the color for each reference
+        if references_dict is not None:
+            for i, (ref_name, ref_values) in enumerate(references_dict.items()):
+                ax.axhline(
+                    ref_values["lower"],
+                    color=f"C{i}",
+                    linestyle=":",
+                    linewidth=1,
+                    label=f"{ref_name} 25th percentile",
+                )
+                ax.axhline(
+                    ref_values["center"],
+                    color=f"C{i}",
+                    linestyle="--",
+                    linewidth=1,
+                    label=f"{ref_name} median",
+                )
+                ax.axhline(
+                    ref_values["upper"],
+                    color=f"C{i}",
+                    linestyle="-.",
+                    linewidth=1,
+                    label=f"{ref_name} 75th percentile",
+                )
+
+        # set axis labels and title
+        if labels_dict is not None:
+            ax.set_title(labels_dict.get("plot_title", ""))
+            ax.set_xlabel(labels_dict.get("x_label", ""))
+            ax.set_ylabel(labels_dict.get("y_label", ""))
+        else:
+            ax.set_title(f"{metric} boxplots")
+            ax.set_xlabel("Noise type")
+            ax.set_ylabel(metric)
+
+        ax.legend()
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.set_ylim(lower_lim, upper_lim)
+
+        # set scientific notation for y axis
+        if lower_lim > 1e2:
+            sci_bound = 6 if upper_lim > 1e6 else 3
+        else:
+            sci_bound = 0
+        ax.ticklabel_format(
+            axis="y", style="sci", scilimits=(sci_bound, sci_bound), useMathText=True
+        )
+
+        # set x axis ticks and labels using log10
+        ax.set_xticks(list(range(len(noise_keys[::x_ticks_step]))))
+        ax.set_xticklabels([label for label in noise_keys[::x_ticks_step]])
+
+        plt.gca().spines["left"].set_position(("data", -h_axis_margin))
+        plt.gca().spines["bottom"].set_position(("data", lower_lim - v_axis_margin))
+
+        plt.tight_layout()
+
+        if show:
+            plt.show()
+        else:
+            plt.savefig(save_path, dpi=600, bbox_inches="tight")
+
+        plt.close()
+
+
+def plot_transformations(
+    T_matrix, dims, groups=3, number_of_comp=3, save_location=None, dpi=600
+):
+    """
+    Function to plot the first "number_of_comp" canonical transformations
+    T_matrix
+        the matrix of canonical transformations.
+    dims
+        provides the shape of the components to plot.
+        Should be either (1, dim) for a 1D vector or (height, width) for a 2D matrix
+    groups
+        number of grouped components to plot
+    number_of_comp
+        the number of components to plot per group. Total number of components is groups*number_of_comp
+    save_location
+        folder location where to save the resulting plot
+    dpi
+        the image resolution in dots per inch. Default: 600
+    """
+
+    mpl, plt, make_axes_locatable, tick = plots_imports()
+    base_config(mpl)
+
+    T_matrix = T_matrix.T
+    height, width = dims
+
+    for g in range(groups):
+        fig, axes = plt.subplots(nrows=1, ncols=number_of_comp)
+
+        if hasattr(axes, "__len__"):
+            axes = axes
+        else:
+            axes = [axes]
+
+        for i in range(number_of_comp):
+            if height == 1:
+                im = axes[i].plot(T_matrix[g * number_of_comp + i, :].reshape(width))
+                axes[i].spines["right"].set_visible(False)
+                axes[i].spines["top"].set_visible(False)
+                axes[i].set_xlim([0, width - 1])
+                axes[i].set_xticks(list(range(0, width, 20)))
+                axes[i].set_xticklabels([str(x) for x in range(0, width, 20)])
+
+            else:
+                im = axes[i].imshow(
+                    T_matrix[g * number_of_comp + i, :].reshape(height, width)
+                )
+                axes[i].set_xticks([])
+                axes[i].set_yticks([])
+                ax_divider = make_axes_locatable(axes[i])
+                cax = ax_divider.append_axes(
+                    "right", size="5%", pad="2%", frameon=False
+                )
+                cax.set_xticks([])
+                cax.set_yticks([])
+
+                fig.colorbar(
+                    im, cax=cax, format=tick.FormatStrFormatter("%.2f")
+                )  # , extend = 'both')
+
+            axes[i].title.set_text("Transform. #{}".format(g * number_of_comp + i + 1))
+        plt.tight_layout()
+        plt.savefig(save_location.format(g), dpi=dpi, bbox_inches="tight")
+
+        plt.close()
+
 
 def plot_samples(
     examples,
     width,
     height,
     rmse_labels=None,
-    ssim_labels = None,
+    ssim_labels=None,
     grd_truth=True,
     save_location=None,
     dpi=600,
-    show = False,
+    show=False,
 ):
     """
     Function to plot given set of examples
@@ -430,10 +661,13 @@ def plot_samples(
 
     gspec = gridspec.GridSpec(ncols=cols, nrows=rows, figure=fig)
 
-    vmin = np.min(examples)
-    vmax = np.max(examples)
+    # vmin = np.min(examples)
+    # vmax = np.max(examples)
 
     for i in range(rows):
+
+        vmin = np.min(examples[i, :, :])
+        vmax = np.max(examples[i, :, :])
 
         for j in range(cols):
             ax = fig.add_subplot(gspec[i, j])
@@ -454,12 +688,28 @@ def plot_samples(
                 if j == 0:
                     ax.title.set_text(r"Ground truth")
                 else:
-                    label = f"RMSE = {rmse_labels[i][j-1]:.2f} ns/m" if rmse_labels is not None else f"Example #{j}"
-                    label = f"{label}; SSIM = {ssim_labels[i][j-1]:.2f}" if ssim_labels is not None else label
+                    label = (
+                        f"RMSE = {rmse_labels[i][j-1]:.2f} ns/m"
+                        if rmse_labels is not None
+                        else f"Example #{j}"
+                    )
+                    label = (
+                        f"{label}; SSIM = {ssim_labels[i][j-1]:.2f}"
+                        if ssim_labels is not None
+                        else label
+                    )
                     ax.title.set_text(label)
             else:
-                label = f"RMSE = {rmse_labels[i][j]:.2f} ns/m" if rmse_labels is not None else f"Example #{j}"
-                label = f"{label}; SSIM = {ssim_labels[i][j]:.2f}" if ssim_labels is not None else label
+                label = (
+                    f"RMSE = {rmse_labels[i][j]:.2f} ns/m"
+                    if rmse_labels is not None
+                    else f"Example #{j}"
+                )
+                label = (
+                    f"{label}; SSIM = {ssim_labels[i][j]:.2f}"
+                    if ssim_labels is not None
+                    else label
+                )
                 ax.title.set_text(label)
 
     plt.tight_layout()
@@ -471,6 +721,7 @@ def plot_samples(
 
     plt.close()
 
+
 def plot_boxplots(
     values_all,
     labels,
@@ -479,7 +730,7 @@ def plot_boxplots(
     upper_lim=None,
     whis_low=2.5,
     whis_high=97.5,
-    y_scale = 'linear',
+    y_scale="linear",
     save_location=None,
     dpi=600,
     show=False,
@@ -577,6 +828,3 @@ def plot_boxplots(
         plt.savefig(save_location, dpi=dpi, bbox_inches="tight")
 
     plt.close()
-
-
-

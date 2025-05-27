@@ -3,45 +3,58 @@ Metrics functions.
 
 @author: elianemaalouf
 """
+
 import numpy as np
 from sklearn.metrics import pairwise_distances
 
+
 def rmse(observation, samples):
     """
-    Compute the root mean square error (RMSE) between an observation and a sample.
+    Calculate the Root Mean Square Error (RMSE) between an observation and multiple samples.
 
-    observation:
-        observation vector of shape (1,dim), will be automatically broadcast to (n_samples,dim)
+    The RMSE is a standard way to measure the difference between a single
+    observation and a set of predicted data points (samples). This function
+    expects the observation to be a single sample and computes the RMSE for
+    each sample in the given set of samples.
 
-    sample:
-        sample from the predictive distribution to test of shape (n_samples,dim)
+    :param observation: A single sample with dimensions (1, D) representing
+        the true values.
+    :param samples: A 2D array with dimensions (N, D), where N is the number
+        of samples and D is the dimensionality of each sample.
 
-    Returns:
-        float: RMSE value.
+    :return: A 1D array of shape (N,) containing the RMSE values for each
+        sample in the samples array compared to the observation.
     """
-    assert observation.shape[1] == samples.shape[1], "Observation and samples must have the same dimension."
+    assert (
+        observation.shape[1] == samples.shape[1]
+    ), "Observation and samples must have the same dimension."
     assert observation.shape[0] == 1, "Observation must be a single sample."
 
     return np.sqrt(np.mean((observation - samples) ** 2, axis=1))
 
+
 def ks(observation, samples, kernel=None, **kwargs):
     """
-    Implements sample based estimation of the kernel score between the observation and the samples.
+    Computes the Kernel Score (KS) as a measure of similarity between an observation and a set
+    of samples, using a specified kernel function. The function calculates pairwise kernel values
+    and determines the score based on the mean values of these computations.
 
-    observation:
-        observation vector of shape (1,dim)
-    samples:
-        sample from the predictive distribution to test of shape (n_samples,dim)
-    kernel:
-        a function that computes pairwise kernel or distances between two arrays.
-        e.g., sklearn.metrics.pairwise.rbf_kernel, sklearn.metrics.pairwise_distances etc.
-        If None, the Euclidean distance is used.
-    kwargs:
-        additional arguments for the kernel function
-    :return: kernel score
+    :param observation: A single data point of shape (1, d), where d is the dimension of the data.
+    :param samples: A set of samples of shape (n, d), where n is the number of samples and d is
+                    the dimension of the data.
+    :param kernel: Callable or None, a kernel function to compute similarities. If None, the
+                   function attempts to use the squared Euclidean distance from sklearn.
+    :param kwargs: Additional keyword arguments to pass to the kernel function. Specific arguments
+                   such as 'metric' and 'squared' may be included when using the default kernel.
+
+    :return: The kernel score, computed as the difference between the mean kernel similarity of
+             the observation and samples, and the pairwise kernel similarity within the samples.
+    :rtype: float
     """
     # verify that the observation and the samples have the same dimension
-    assert observation.shape[1] == samples.shape[1], "Observation and samples must have the same dimension."
+    assert (
+        observation.shape[1] == samples.shape[1]
+    ), "Observation and samples must have the same dimension."
     assert observation.shape[0] == 1, "Observation must be a single sample."
 
     if kernel is None:
@@ -52,7 +65,7 @@ def ks(observation, samples, kernel=None, **kwargs):
             kernel = pairwise_distances
             # add to **kwargs the metric to use and the squared flag
             kwargs["metric"] = "euclidean"
-            kwargs["squared"] = True # squared Euclidean distance
+            kwargs["squared"] = True  # squared Euclidean distance
             print("Using the Euclidean distance as a kernel.")
         except:
             raise ImportError(
@@ -73,43 +86,60 @@ def ks(observation, samples, kernel=None, **kwargs):
     # compute the score
     return k_obs - K_pairwise
 
+
 def es(observation, samples, power=2):
     """
-    Implements the energy score based on the generic kernel score function.
-    observation:
-        observation vector of shape (1,dim)
-    samples:
-        sample from the predictive distribution to test of shape (n_samples,dim)
-    power:
-        power for the distance
-    :return: energy score between the observation and the samples
+    Compute the kernel score (KS) between an observation and samples using a specified
+    distance metric and power. The function leverages the pairwise distances as the
+    kernel for comparisons, switching between squared Euclidean distance for power of 2
+    and Manhattan (L1) distance for power of 1.
+
+    :param observation: Data point(s) to compare against the samples.
+
+    :param samples: Array of sample data points for comparison with the observation.
+
+    :param power: Power specifying the type of kernel distance to use.
+        Defaults to 2. For power value of:
+        - 2: squared Euclidean distance
+        - 1: Manhattan (L1) distance
+
+    :return: Returns the kernel score (KS) computed between the observation and the samples
+        using the specified distance kernel.
     """
     if power == 2:
         kernel_es = pairwise_distances
         kwargs_es = {"metric": "euclidean", "squared": True}
     if power == 1:
         kernel_es = pairwise_distances
-        kwargs_es = {"metric": 'l1'}  # {"power": 1}
+        kwargs_es = {"metric": "l1"}  # {"power": 1}
 
     return ks(observation, samples, kernel=kernel_es, **kwargs_es)
 
+
 def vs(observation, samples, power=0.5, w=None):
     """
-    Implements empirical estimation of the variogram score
+    Compute a score based on the pairwise differences between components of
+    a single observation and multiple samples, weighted by a matrix.
 
-    observation:
-        observation vector of shape (1,dim)
-    samples:
-        sample from the predictive distribution to test of shape (n_samples,dim)
-    power:
-        power for the distance
-    w:
-        weights matrix of shape (dim,dim)
-    :return: variogram score between the observation and the samples
+    The function takes a single observation and a set of samples, calculates
+    pairwise differences for their components raised to the specified power,
+    and computes a weighted score based on these differences. A weight matrix
+    is used for the computation, ensuring only non-negative values for weights.
+
+    :param observation: A single observation with shape (1, d), where `d` is
+        the dimensionality of the data.
+    :param samples: A collection of samples with shape (n, d), where `n` is the
+        number of samples and `d` is the dimensionality of the data.
+    :param power: The power to which pairwise differences are raised. Defaults to 0.5.
+    :param w: An optional weight matrix of shape (d, d). Defaults to a matrix with
+        all elements set to 1. Must be non-negative if provided.
+    :return: A scalar score computed based on the pairwise differences and weight matrix.
     """
 
     # verify that the observation and the samples have the same dimension
-    assert observation.shape[1] == samples.shape[1], "Observation and samples must have the same dimension."
+    assert (
+        observation.shape[1] == samples.shape[1]
+    ), "Observation and samples must have the same dimension."
     assert observation.shape[0] == 1, "Observation must be a single sample."
 
     n_samples = samples.shape[0]

@@ -4,43 +4,75 @@
 """
 
 import h5py
-import torch
 import numpy as np
-import pickle
+import torch
 
-def save_to_disk(data, file_path):
-    """
-    Save data to disk using pickle.
 
-    data:
-        data to save
-    file_path:
-        path to save the data
+def save_to_disk(data, file_path, json=False):
     """
-    with open(file_path, 'wb') as f:
-        pickle.dump(data, f)
+    Saves the given data object to the disk at the specified file path. The
+    data can be saved in either JSON or binary (pickle) format based on the
+    value of the `json` parameter. If `json` is True, the data will be saved
+    in JSON format; otherwise, it will be saved in binary format using pickle.
+
+    :param data: The data object that needs to be saved to the specified
+        file on disk. Its content and type depend on the serialization format.
+    :param file_path: The file path where the serialized data will be stored.
+    :param json: A boolean flag indicating the serialization format.
+        If True, data is saved in JSON format. Defaults to False.
+    :return: None
+    """
+    if json:
+        import json
+
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=4)
+    else:
+        import pickle
+
+        with open(file_path, "wb") as f:
+            pickle.dump(data, f)
+
 
 def load_from_disk(file_path):
     """
-    Load data from disk using pickle.
+    Loads data from a specified file path using pickle.
 
-    file_path:
-        path to load the data from
-    :return: loaded data
+    This function reads serialized data from the file located at the given
+    file path and deserializes it using pickle. It expects the file to
+    be in binary mode and contain data compatible with pickle format.
+
+    :param file_path: The path to the file storing the serialized data.
+    :return: The deserialized data loaded from the file.
     """
-    with open(file_path, 'rb') as f:
+    import pickle
+
+    with open(file_path, "rb") as f:
         data = pickle.load(f)
     return data
 
 
-def import_dataset(datasets_list, config_obj, train_set_size, subset_train = None, mean_center = True):
+def import_dataset(
+    datasets_list, config_obj, train_set_size, subset_train=None, mean_center=True
+):
     """
-    Import datasets from the specified list.
-    :param datasets_list: list of dataset names, should contain "train" at least
-    :param config_obj: config object containing the data folder location
-    :param train_set_size: size of the training set
-    :param subset_train: number of training samples to select randomly from the training set
-    :return : list of imported datasets
+    Imports datasets specified in the input list and processes them based on configuration
+    parameters, mean-centering, and optional subset specifications for training data. The
+    datasets can include training, validation, or testing sets. Each dataset is loaded
+    from its respective HDF5 file and may include transformations such as reshaping and
+    mean-centering. Returns a dictionary containing processed datasets for further use.
+
+    :param datasets_list: A list containing dataset identifiers to import (e.g., 'train',
+        'val', 'test').
+    :param config_obj: An object containing configuration details such as data folder
+        location and dimensional parameters (nx, ny, rays).
+    :param train_set_size: Total number of training examples available in the dataset.
+    :param subset_train: Optional; The number of training examples to use in a subset.
+        If None, defaults to `train_set_size`.
+    :param mean_center: Boolean flag; If True, applies mean-centering to all datasets
+        (training, validation, and testing).
+    :return: A dictionary containing imported datasets (`train`, `val`, `test`) and their
+        calculated mean values (`means`) for input and output features.
     """
     if "train" not in datasets_list:
         raise ValueError("The dataset list should contain 'train' at least")
@@ -83,8 +115,8 @@ def import_dataset(datasets_list, config_obj, train_set_size, subset_train = Non
             train_x = train_x - x_mean
             train_y = train_y - y_mean
 
-        result['means'] = [x_mean, y_mean]
-        result['train'] = [train_x, train_y]
+        result["means"] = [x_mean, y_mean]
+        result["train"] = [train_x, train_y]
 
     if "val" in datasets_list:
         # import validation sets
@@ -106,9 +138,9 @@ def import_dataset(datasets_list, config_obj, train_set_size, subset_train = Non
             val_x = val_x - x_mean
             val_y = val_y - y_mean
 
-        result['val'] = [val_x, val_y]
+        result["val"] = [val_x, val_y]
     else:
-        result['val'] = [None, None]
+        result["val"] = [None, None]
 
     if "test" in datasets_list:
         test_models_file = h5py.File(f"{data_folder_location}/test_models.h5")
@@ -121,25 +153,40 @@ def import_dataset(datasets_list, config_obj, train_set_size, subset_train = Non
         test_truett_noiseless = torch.tensor(
             test_truett_file.get("test_truett_noNoise"), dtype=torch.float64
         ).numpy()
-        test_y = test_truett_noiseless.reshape(-1,dim_y)
+        test_y = test_truett_noiseless.reshape(-1, dim_y)
         test_truett_file.close()
 
         if mean_center:
             test_x = test_x - x_mean
             test_y = test_y - y_mean
 
-        result['test'] = [test_x, test_y]
+        result["test"] = [test_x, test_y]
     else:
-        result['test'] = [None, None]
+        result["test"] = [None, None]
 
     return result
 
+
 def get_noise(config_obj, noise_label):
     """
-    Get the noise parameters from the config object
-    :param config_obj: config object containing the noise parameters
-    :param noise_label: label of the noise
-    :return: noise parameters
+    Retrieve the noise configuration from a list of available configurations
+    based on the noise label provided. The function looks up the appropriate
+    noise by matching the given label to predefined options, "small_gauss" or
+    "large_gauss". If the noise label does not match any recognized options,
+    an exception is raised indicating the unrecognized label.
+
+    :param config_obj: Configuration object containing the list of available
+        noises in the attribute `noises_list`. Assumes this object has a
+        valid property `noises_list`, which is a list where the first element
+        corresponds to "small_gauss" noise and the second element corresponds
+        to "large_gauss" noise.
+    :param noise_label: Label specifying the noise to retrieve. Must be one
+        of the following recognized labels: "small_gauss" or "large_gauss".
+    :return: The noise configuration corresponding to the given label. Returns
+        the first element of `noises_list` for "small_gauss" or the second
+        element of `noises_list` for "large_gauss".
+    :raises ValueError: If the provided `noise_label` does not match any
+        recognized labels ("small_gauss" or "large_gauss").
     """
     if noise_label == "small_gauss":
         return config_obj.noises_list[0]
@@ -147,6 +194,3 @@ def get_noise(config_obj, noise_label):
         return config_obj.noises_list[1]
     else:
         raise ValueError("Unknown noise label: {}".format(noise_label))
-
-
-
