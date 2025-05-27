@@ -384,9 +384,30 @@ def run_inversion_eval(inversion_data, cca_obj, metrics, xp_config_folder, confi
 
     for noise_label in noise_labels:
 
-        n = inversion_data[noise_label]['predicted'].shape[0]
-        m = inversion_data[noise_label]['predicted'].shape[2]
-        dim = inversion_data[noise_label]['predicted'].shape[1]
+        n = inversion_data[noise_label]["predicted"].shape[0]
+        m = inversion_data[noise_label]["predicted"].shape[2]
+        dim = inversion_data[noise_label]["predicted"].shape[1]
+
+        if assess_vs_det_pred and not det_pred_past_run:
+            inversion_data[noise_label]["det_prediction"] = CCA.predict(
+                cca_obj[noise_label].T_x_full_inv_T,
+                cca_obj[noise_label].T_y_can,
+                test_y[noise_label],
+                cca_obj[noise_label].CanCorr,
+                dim,
+                out_mean=x_mean,
+                probabilistic=False,
+                sample_size=1,
+            )
+            det_preds_refs[noise_label] = {}
+            for i, metric in enumerate(metrics_types):
+                det_preds_refs[noise_label][metric] = run_metrics(
+                    inversion_data[noise_label]["det_prediction"],
+                    inversion_data[noise_label]["ground_truth"],
+                    metric,
+                    metrics_params[i],
+                    reduced_sample_size=None,
+                )
 
         # compute metrics
         results[noise_label] = {}
