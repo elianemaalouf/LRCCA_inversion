@@ -8,7 +8,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-from xp_config import det_preds_refs
 
 from cca import CCA
 from lrcca_inversion.utils.generic_fn import load_from_disk, save_to_disk
