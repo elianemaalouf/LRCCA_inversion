@@ -34,7 +34,11 @@ name contained in its `config.json` file and listed in the `Experiments/all_xp_c
     (as chosen in the `xp_config.py` file). Proceed in the same way to run the evaluation script by `xp_eval_script.py`.
 2. To rerun an existing experiment, simply run the `xp_val_script.py` or `xp_eval_script.py` script with the 
    `xp_name` variable set to the name of the experiment you want to rerun. Make sure the experiment name and folder
-    are correctly set in the `Experiments/all_xp_configs.json` file.
+    are correctly set in the `Experiments/all_xp_configs.json` file. 
+
+For each of the validation experiments, we provide the full data that resulted from the validation runs in 
+`validation_data.pkl` file. For each inversion experiment, we provide the full data that resulted from the 
+inversion runs in `inversion_data.pkl` file and the trained CCA objects in `cca_objects.pkl`.
 
 All experiments ran with a fixed seed of 42, fixed in the data parameters file 
 `Data/parameters_matern32_Mu10_Var1p96_CorH30_CorV15_linear_81.txt` and enforced in `lrcca_inversion/utils/config.py` 
