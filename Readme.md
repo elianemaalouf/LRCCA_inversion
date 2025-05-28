@@ -21,7 +21,7 @@ For every new experiment, this script creates a new directory and generates a `c
 parameters. The script also updates the `Experiments/all_xp_configs.json` file with the new experiment name and folder 
 location.
 
-# Experiments naming convenction and reproducibility
+# Experiments naming convention and reproducibility
 All deterministic predictions experiments are stored in the `Experiments/deterministic_preds/` folder. 
 All probabilistic predictions experiments are stored in the `Experiments/probabilistic_preds/` folder.
 Regularization validation experiments are named as `det_preds_reg_XYZ` (for deterministic predictions) or `prob_preds_reg_XYZ` 
@@ -55,4 +55,11 @@ from the command line.
 - h5py, to load the data
 - torch, data is stored as PyTorch tensors
 - pickle
+
+# Disclaimer 
+This software is provided 'as is' without any warranty, express or implied. 
+Please see the `LICENSE` file for full details.
+
+
+
 
