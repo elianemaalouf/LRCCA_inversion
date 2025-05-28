@@ -1,6 +1,6 @@
 # Regularized Canonical Correlation Analysis (RCCA) for solving linear inverse problems
 
-Data and Python code repository to reproduce the results of the experiments in chapter 3 of the thesis 
+Data and Python code repository to reproduce the results in chapter 3 of the thesis 
 "Contributions to data-driven Bayesian solutions to inverse problems, with classical multivariate statistics and modern
 generative neural networks" by Eliane Maalouf (University of Neuchâtel, Switzerland).
 
