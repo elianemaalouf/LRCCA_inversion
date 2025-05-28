@@ -1,0 +1,67 @@
+{
+    "xp_name": "prob_preds_reg_n500_cv5",
+    "xp_folder": "/home/dl-rookie/PycharmProjects/LRCCA_inversion/Experiments/probabilistic_preds/prob_preds_reg_n500_cv5",
+    "train_subset": 500,
+    "val_subset_size": 50,
+    "assess_train_metrics": false,
+    "lambda_x_vec": [
+        0.0001,
+        0.001,
+        0.01,
+        0.1,
+        1,
+        10
+    ],
+    "lambda_y_vec": [
+        0,
+        0.0001,
+        0.001,
+        0.01,
+        0.1,
+        1,
+        10
+    ],
+    "run_validations": true,
+    "validation_repeats": 5,
+    "validations": {
+        "types": [
+            "rmse",
+            "es"
+        ],
+        "params": [
+            null,
+            2
+        ]
+    },
+    "probabilistic": true,
+    "prob_sample_size": 500,
+    "parameters_file": "/home/dl-rookie/PycharmProjects/LRCCA_inversion/Data/parameters_matern32_Mu10_Var1p96_CorH30_CorV15_linear_81.txt",
+    "test_vecs_ids_to_invert": null,
+    "det_pred_refs": {
+        "small_noise": {
+            "es": {
+                "lower": 573.469,
+                "center": 819.821,
+                "upper": 1224.353
+            },
+            "rmse": {
+                "lower": 0.535,
+                "center": 0.64,
+                "upper": 0.782
+            }
+        },
+        "large_noise": {
+            "es": {
+                "lower": 829.229,
+                "center": 1109.691,
+                "upper": 1541.074
+            },
+            "rmse": {
+                "lower": 0.644,
+                "center": 0.745,
+                "upper": 0.878
+            }
+        }
+    },
+    "vs_train_refs_filename": "reference_val_metrics_es2_vs05_rmse.pkl"
+}
