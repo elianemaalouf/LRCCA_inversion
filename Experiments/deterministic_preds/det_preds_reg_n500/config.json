@@ -1,0 +1,43 @@
+{
+    "xp_name": "det_preds_reg_n500",
+    "xp_folder": "/home/dl-rookie/PycharmProjects/LRCCA_inversion/Experiments/deterministic_preds/det_preds_reg_n500",
+    "train_subset": 500,
+    "val_subset_size": 2000,
+    "assess_train_metrics": true,
+    "lambda_x_vec": [
+        0.0001,
+        0.001,
+        0.01,
+        0.1,
+        1,
+        10
+    ],
+    "lambda_y_vec": [
+        0,
+        0.0001,
+        0.001,
+        0.01,
+        0.1,
+        1,
+        10
+    ],
+    "run_validations": true,
+    "validations": {
+        "types": [
+            "rmse",
+            "es",
+            "vs"
+        ],
+        "params": [
+            null,
+            2,
+            0.5
+        ]
+    },
+    "probabilistic": false,
+    "prob_sample_size": 1,
+    "parameters_file": "/home/dl-rookie/PycharmProjects/LRCCA_inversion/Data/parameters_matern32_Mu10_Var1p96_CorH30_CorV15_linear_81.txt",
+    "test_vecs_ids_to_invert": null,
+    "det_pred_refs": null,
+    "vs_train_refs_filename": "reference_val_metrics_es2_vs05_rmse.pkl"
+}
