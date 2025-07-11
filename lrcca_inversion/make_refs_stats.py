@@ -2,15 +2,15 @@
 Generate summary statistics for the reference metrics.
 """
 
-"""
+
 from pathlib import Path
 from lrcca_inversion.utils.generic_fn import load_from_disk, save_to_disk
 from lrcca_inversion.utils.evals import compute_stats
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-file_name = "reference_val_metrics_es2_vs05_rmse.pkl" # "reference_val_metrics_es1.pkl" #
-output_file_name = "reference_val_metrics_es2_vs05_rmse_summaries.json" # "reference_val_metrics_es1_summaries.json" #
+file_name = "reference_inv_metrics_es1_vs05_rmse.pkl"#"reference_val_metrics_es2_vs05_rmse.pkl" # "reference_val_metrics_es1.pkl" #
+output_file_name = "reference_inv_metrics_es1_vs05_rmse.json"#"reference_val_metrics_es2_vs05_rmse_summaries.json" # "reference_val_metrics_es1_summaries.json" #
 
 reference_metrics = load_from_disk(f"{BASE_DIR}/Experiments/{file_name}")
 
@@ -19,7 +19,7 @@ for metric in reference_metrics.keys():
     summaries[metric] = compute_stats(reference_metrics[metric])
 
 save_to_disk(summaries, f"{BASE_DIR}/Experiments/{output_file_name}", json=True)
-"""
+
 
 # %%
 from pathlib import Path
