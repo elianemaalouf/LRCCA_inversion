@@ -7,8 +7,6 @@ Script to run the LRCCA inversion experiments evaluations
 import json
 from pathlib import Path
 
-from xp_config import load_config
-
 from lrcca_inversion.utils.config import Config
 from lrcca_inversion.utils.generic_fn import (import_dataset, load_from_disk,
                                               save_to_disk)
@@ -16,6 +14,7 @@ from lrcca_inversion.xp_runners import (run_inv_reference_metrics,
                                         run_inversion_eval,
                                         run_val_reference_metrics,
                                         run_validation_eval)
+from xp_config import load_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,7 +28,7 @@ else:
         "No experiments found. Please create an experiment configuration file first via xp_config.py"
     )
 
-xp_name = "prob_preds_inv_n500_resims_ly_exp9"
+xp_name = "non_linear_prob_preds_inv_n500"  # "prob_preds_inv_n500_resims_ly_exp9"
 xp_config = load_config(f"{all_xp_configs[xp_name]}/config.json")
 
 # load data configuration and files

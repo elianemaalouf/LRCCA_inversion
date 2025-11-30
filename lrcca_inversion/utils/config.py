@@ -4,10 +4,14 @@
 """
 
 import ast
+import os
 import random
 
 import numpy as np
 import torch
+
+from lrcca_inversion.utils.solvers.eikonal_solver_setup import \
+    eikonal_solver_setup
 
 
 def get_prior(h5_file, mu):
@@ -158,6 +162,14 @@ class Config:
                 )
                 self.solver_matrix = self.solver_setup_dict["solver_matrix"]
                 self.ndata = self.solver_setup_dict["ndata"]
+            elif self.solver_type == "eikonal-nl":
+                self.solver_setup_dict = eikonal_solver_setup(
+                    nx=self.nx,
+                    ny=self.ny,
+                    sources_x=self.sources_x,
+                    spacing=self.spacing,
+                    rays=self.rays,
+                )
             else:
                 raise ValueError("Solver type not supported")
 

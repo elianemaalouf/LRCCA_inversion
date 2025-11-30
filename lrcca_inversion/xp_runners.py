@@ -8,8 +8,8 @@ import time
 from pathlib import Path
 
 import numpy as np
-
 from cca import CCA
+
 from lrcca_inversion.utils.generic_fn import load_from_disk, save_to_disk
 from lrcca_inversion.utils.metrics import es, rmse, vs
 
@@ -343,7 +343,6 @@ def run_validation(
 
                 # compute validation metrics
                 for i, validation_type in enumerate(validation_types):
-
                     validation_param = validation_params[i]
 
                     if assess_train_metrics:
@@ -555,17 +554,17 @@ def run_validation_eval(
                 summaries[noise_label][train_val_key][metric] = {}
                 for comb in lambda_combinations:
                     data = validation_data[noise_label][train_val_key][metric][comb]
-                    summaries[noise_label][train_val_key][metric][str(comb)] = (
-                        evals.compute_stats(data)
-                    )
+                    summaries[noise_label][train_val_key][metric][
+                        str(comb)
+                    ] = evals.compute_stats(data)
 
                 # Finding best combination for current metric
-                best_comb[noise_label][train_val_key][metric] = (
-                    evals.get_best_param_comb(
-                        validation_data[noise_label][train_val_key],
-                        metric,
-                        ref_stat=kwargs.get("ref_stat", "median"),
-                    )
+                best_comb[noise_label][train_val_key][
+                    metric
+                ] = evals.get_best_param_comb(
+                    validation_data[noise_label][train_val_key],
+                    metric,
+                    ref_stat=kwargs.get("ref_stat", "median"),
                 )
 
     # Save results
@@ -680,7 +679,6 @@ def run_inversion_eval(
         update_inversion_data_file = False
 
     for noise_label in noise_labels:
-
         n = inversion_data[noise_label]["predicted"].shape[0]
         m = inversion_data[noise_label]["predicted"].shape[2]
         dim = inversion_data[noise_label]["predicted"].shape[1]
@@ -708,7 +706,6 @@ def run_inversion_eval(
 
         # compute metrics, if they were not already computed
         if not loaded_results:
-
             inversion_metrics[noise_label] = {}
 
             for i, metric in enumerate(metrics_types):
@@ -848,7 +845,20 @@ def run_inversion_eval(
                 )
 
     # make y_obs vs D_{y_resim} metrics
-    solver = config.solver_matrix  # shape (dim_y, dim_x)
+    if config.solver_type == "linear":
+        solver = config.solver_matrix  # shape (dim_y, dim_x)
+    elif config.solver_type == "eikonal-nl":
+        nx = config.nx
+        ny = config.ny
+        so_file = f"{config.rootdir}/lrcca_inversion/utils/solvers/time_2d_new.so"
+        print(f"Using eikonal solver from shared object file: {so_file}")
+        from lrcca_inversion.utils.solvers.eikonal_solver_setup import \
+            call_eikonal
+
+        solver_setup_dict = config.solver_setup_dict
+    else:
+        raise ValueError(f"Unknown solver type: {config.solver_type}")
+
     y_resim = {}
     y_resim_metrics = {}
     resim_boxplot_data_dict = {}
@@ -876,19 +886,33 @@ def run_inversion_eval(
             y_resim[noise_label] = np.zeros((n, config.rays, m))
             y_resim_metrics[noise_label] = {}
             test_y_d = test_y[noise_label].copy() + y_mean
-
             if not loaded_y_resim:
                 for i in range(n):
-                    predictions_i = inversion_data[noise_label]["predicted"][
-                        i, :, :
-                    ]  # shape (dim_x, m)
-                    y_resim[noise_label][i, :, :] = (
-                        solver @ predictions_i
-                    )  # shape (dim_y, m)
+                    if config.solver_type == "linear":
+                        predictions_i = inversion_data[noise_label]["predicted"][
+                            i, :, :
+                        ]  # shape (dim_x, m)
+                        y_resim[noise_label][i, :, :] = (
+                            solver @ predictions_i
+                        )  # shape (dim_y, m)
+                    elif config.solver_type == "eikonal-nl":
+                        for k in range(m):
+                            predictions_i = inversion_data[noise_label]["predicted"][
+                                i, :, k
+                            ]  # shape (dim_x,)
+                            # clamp negative values in predictions_i to 0 to avoid NaN from eikonal solver
+                            predictions_i = np.maximum(predictions_i, 0.0)
+                            predictions_i = predictions_i.reshape(ny, nx, order="C")
+                            y_resim_i = call_eikonal(
+                                solver_setup_dict, predictions_i, so_file
+                            )  # shape (dim_y,)
+                            y_resim[noise_label][i, :, k] = y_resim_i
 
             # compute metrics for y_obs vs D_{y_resim}
             for i, metric in enumerate(metrics_types):
-
+                print(
+                    f"Running y_resim metrics for noise: {noise_label}, metric: {metric}"
+                )
                 if metric not in resim_boxplot_data_dict:
                     resim_boxplot_data_dict[metric] = {}
 
@@ -901,9 +925,9 @@ def run_inversion_eval(
                     metrics_params[i],
                     reduced_sample_size=None,
                 )
-                resim_boxplot_data_dict[metric][noise_label]["y_resim"] = (
-                    y_resim_metrics[noise_label][metric]
-                )
+                resim_boxplot_data_dict[metric][noise_label][
+                    "y_resim"
+                ] = y_resim_metrics[noise_label][metric]
 
                 if j < len(noise_labels) - 1:
                     continue
@@ -965,6 +989,7 @@ def run_val_reference_metrics(n, m, train_x, val_x, x_mean, metric_dict):
         )
 
     return metrics
+
 
 def run_inv_reference_metrics(n, m, train_x, test_x, test_ids, x_mean, metric_dict):
     """

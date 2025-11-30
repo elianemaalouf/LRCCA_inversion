@@ -665,7 +665,6 @@ def plot_samples(
     # vmax = np.max(examples)
 
     for i in range(rows):
-
         vmin = np.min(examples[i, :, :])
         vmax = np.max(examples[i, :, :])
 

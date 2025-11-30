@@ -1,7 +1,7 @@
 """
 Generate summary statistics for the reference metrics.
 """
-
+"""
 
 from pathlib import Path
 from lrcca_inversion.utils.generic_fn import load_from_disk, save_to_disk
@@ -20,8 +20,9 @@ for metric in reference_metrics.keys():
 
 save_to_disk(summaries, f"{BASE_DIR}/Experiments/{output_file_name}", json=True)
 
-
+"""
 # %%
+
 from pathlib import Path
 
 from lrcca_inversion.utils.evals import compute_stats
@@ -29,7 +30,7 @@ from lrcca_inversion.utils.generic_fn import load_from_disk, save_to_disk
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-xp_name = "prob_preds_inv_n500_resims_ly_exp9"
+xp_name = "non_linear_prob_preds_inv_n500"
 file_name = "y_resim_metrics.pkl"
 output_file_name = "resim_metrics_summaries"
 
@@ -52,23 +53,26 @@ save_to_disk(
 )
 
 # %%
-
+"""
 ## Median resim RMSE plots
 import matplotlib.pyplot as plt
 import numpy as np
 
 import lrcca_inversion.utils.evals as evals
 
-# data from resim experiments 1 to 9
-lambda_y = [0.0001, 0.001, 0.01, 0.1, 1, 10]  # , 100]
+# data from resim experiments 
+lambda_y = [0.0001, 0.001, 0.01, 0.1, 1, 10 , 100]
 
-sn_median_rmse = [0.016, 0.081, 0.251, 0.423, 0.654, 1.163]  # , 2.243]
-sn_lower = [0.015, 0.074, 0.236, 0.402, 0.613, 1.042]  # , 1.861]
-sn_upper = [0.017, 0.089, 0.275, 0.451, 0.697, 1.304]  # , 2.668]
+# from resim_metrics_summaries.json of each experiment
+# small noise (SN) stats
+sn_median_rmse = [1.563, 1.362, 0.929, 0.746, 0.853, 1.249, 2.238]
+sn_lower = [1.315, 1.158,  0.805, 0.662, 0.768, 1.100, 1.852] # lower - IQR
+sn_upper = [1.965, 1.689, 1.089, 0.860, 0.952, 1.417, 2.682] # upper - IQR
 
-ln_median_rmse = [0.054, 0.389, 1.203, 1.868, 2.240, 2.603]  # , 3.296]
-ln_lower = [0.047, 0.347, 1.131, 1.786, 2.147, 2.469]  # , 3.030]
-ln_upper = [0.059, 0.425, 1.311, 1.983, 2.395, 2.740]  # , 3.615]
+# large noise (LN) stats
+ln_median_rmse = [12.181, 10.234, 5.199, 2.563, 2.434, 2.667, 3.301]
+ln_lower = [8.114, 6.954, 3.978, 2.359, 2.288, 2.522, 3.032] # lower - IQR
+ln_upper = [15.763, 13.896, 6.821, 2.807, 2.559, 2.808, 3.624] # upper - IQR
 
 sn_std = 0.5
 ln_std = 2.5
@@ -103,4 +107,5 @@ plt.gca().spines["top"].set_visible(False)
 plt.xlabel(r"$\log_{10}(\lambda_Y)$")
 plt.ylabel("Median resimulations RMSE")
 plt.legend()
-plt.savefig("resim_median_rmse.pdf", dpi=600, bbox_inches="tight")
+plt.savefig("resim_median_rmse_non_linear.pdf", dpi=600, bbox_inches="tight")
+"""
